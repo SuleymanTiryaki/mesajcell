@@ -2,8 +2,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
+import 'app_session.dart';
 
 /// Merkezi Dio factory — tüm servisler buradan Dio alır.
+/// AppSession'da token varsa her isteğe otomatik Bearer ekler.
 /// Debug modda request/response konsola yazdırılır.
 final class AppDio {
   AppDio._();
@@ -15,6 +17,19 @@ final class AppDio {
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         headers: {'Content-Type': 'application/json'},
+      ),
+    );
+
+    // Bearer token interceptor — AppSession'da token varsa header'a ekle
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          final token = AppSession.instance.accessToken;
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          handler.next(options);
+        },
       ),
     );
 
