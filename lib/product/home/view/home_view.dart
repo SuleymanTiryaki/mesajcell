@@ -1,41 +1,39 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mesajcell/features/utility/const/constant_color.dart';
 import 'package:mesajcell/features/utility/const/constant_string.dart';
+import '../../channel/cubit/channel_list_cubit.dart';
 import '../../channel/view/create_channel_view.dart';
-import '../model/chat_user_model.dart';
 import 'widget/chat_tile.dart';
+import 'widget/invite_sheet.dart';
 
-class HomeView extends StatefulWidget {
+class HomeView extends StatelessWidget {
   const HomeView({super.key});
 
   @override
-  State<HomeView> createState() => _HomeViewState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => ChannelListCubit()..fetchChannels(),
+      child: const _HomeViewBody(),
+    );
+  }
 }
 
-class _HomeViewState extends State<HomeView> {
+class _HomeViewBody extends StatefulWidget {
+  const _HomeViewBody();
+
+  @override
+  State<_HomeViewBody> createState() => _HomeViewBodyState();
+}
+
+class _HomeViewBodyState extends State<_HomeViewBody> {
   final TextEditingController _searchController = TextEditingController();
-  List<ChatUser> _filteredUsers = mockUsers;
+  String _query = '';
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _onSearchChanged(String query) {
-    setState(() {
-      if (query.isEmpty) {
-        _filteredUsers = mockUsers;
-      } else {
-        _filteredUsers = mockUsers
-            .where(
-              (user) =>
-                  user.name.toLowerCase().contains(query.toLowerCase()) ||
-                  user.lastMessage.toLowerCase().contains(query.toLowerCase()),
-            )
-            .toList();
-      }
-    });
   }
 
   @override
@@ -46,64 +44,104 @@ class _HomeViewState extends State<HomeView> {
         title: Text(ConstantString.chats),
         actions: [
           IconButton(
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Davet Et',
+            onPressed: () => showInviteSheet(context),
+          ),
+          IconButton(
             icon: const Icon(Icons.edit_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
+            onPressed: () async {
+              await Navigator.of(context).push(
                 MaterialPageRoute(
                   fullscreenDialog: true,
                   builder: (_) => const CreateChannelView(),
                 ),
               );
+              // Kanal oluşturulduktan sonra listeyi yenile
+              if (context.mounted) {
+                context.read<ChannelListCubit>().fetchChannels();
+              }
             },
           ),
           const SizedBox(width: 8),
         ],
       ),
-      body: Column(
-        children: [
-          // Arama çubuğu
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: TextField(
-              controller: _searchController,
-              onChanged: _onSearchChanged,
-              decoration: InputDecoration(
-                hintText: ConstantString.search,
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _onSearchChanged('');
-                        },
-                      )
-                    : null,
-              ),
-            ),
-          ),
-          // Kullanıcı listesi
-          Expanded(
-            child: _filteredUsers.isEmpty
-                ? Center(
-                    child: Text(
-                      ConstantString.noResultFound,
-                      style: TextStyle(color: ConstColor.grey500),
-                    ),
-                  )
-                : ListView.separated(
-                    itemCount: _filteredUsers.length,
-                    separatorBuilder: (_, __) => const Divider(
-                      indent: 80,
-                      height: 1,
-                    ),
-                    itemBuilder: (context, index) {
-                      final user = _filteredUsers[index];
-                      return ChatTile(user: user);
-                    },
+      body: BlocBuilder<ChannelListCubit, ChannelListState>(
+        builder: (context, state) {
+          if (state.status == ChannelListStatus.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (state.status == ChannelListStatus.error) {
+            return Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    state.errorMessage ?? 'Hata oluştu',
+                    style: TextStyle(color: ConstColor.grey500),
                   ),
-          ),
-        ],
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: () =>
+                        context.read<ChannelListCubit>().fetchChannels(),
+                    child: const Text('Tekrar Dene'),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final channels = state.channels.where((c) {
+            if (_query.isEmpty) return true;
+            return c.name.toLowerCase().contains(_query.toLowerCase()) ||
+                c.description.toLowerCase().contains(_query.toLowerCase());
+          }).toList();
+
+          return Column(
+            children: [
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _query = v),
+                  decoration: InputDecoration(
+                    hintText: ConstantString.search,
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: channels.isEmpty
+                    ? Center(
+                        child: Text(
+                          ConstantString.noResultFound,
+                          style: TextStyle(color: ConstColor.grey500),
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: channels.length,
+                        separatorBuilder: (_, __) => const Divider(
+                          indent: 80,
+                          height: 1,
+                        ),
+                        itemBuilder: (context, index) =>
+                            ChatTile(channel: channels[index]),
+                      ),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
@@ -113,3 +151,4 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 }
+

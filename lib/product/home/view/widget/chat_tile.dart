@@ -1,69 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:mesajcell/features/utility/const/constant_color.dart';
-import '../../model/chat_user_model.dart';
+import '../../../channel/model/channel_model.dart';
+import '../../../channel/view/channel_view.dart';
 
 class ChatTile extends StatelessWidget {
-  final ChatUser user;
+  final ChannelModel channel;
 
-  const ChatTile({super.key, required this.user});
+  const ChatTile({super.key, required this.channel});
 
   @override
   Widget build(BuildContext context) {
+    final IconData typeIcon;
+    switch (channel.type) {
+      case ChannelType.private:
+        typeIcon = Icons.lock_outline;
+        break;
+      case ChannelType.dm:
+        typeIcon = Icons.person_outline;
+        break;
+      case ChannelType.public:
+        typeIcon = Icons.tag;
+        break;
+    }
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       leading: CircleAvatar(
         radius: 26,
-        backgroundColor: user.avatarColor,
-        child: Text(
-          user.avatarInitials,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          ),
-        ),
+        backgroundColor: ConstColor.primary.withOpacity(0.15),
+        child: Icon(typeIcon, color: ConstColor.primary),
       ),
-      title: Text(user.name),
+      title: Text(channel.name),
       subtitle: Text(
-        user.lastMessage,
+        channel.description.isNotEmpty ? channel.description : '—',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(
-            user.time,
-            style: TextStyle(
-              color: user.unreadCount > 0
-                  ? ConstColor.primary
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 4),
-          if (user.unreadCount > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: ConstColor.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                user.unreadCount.toString(),
-                style: const TextStyle(
-                  color: ConstColor.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-        ],
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       onTap: () {
-        // TODO: Sohbet detay sayfasına git
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ChannelView(channel: channel),
+          ),
+        );
       },
     );
   }
 }
+
+
