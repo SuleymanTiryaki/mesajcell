@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mesajcell/features/utility/const/constant_color.dart';
 import 'package:mesajcell/features/utility/const/constant_string.dart';
+import '../../channel/view/create_channel_view.dart';
 import '../model/chat_user_model.dart';
 import 'widget/chat_tile.dart';
 
@@ -47,7 +48,12 @@ class _HomeViewState extends State<HomeView> {
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             onPressed: () {
-              // TODO: Yeni sohbet başlatma
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  fullscreenDialog: true,
+                  builder: (_) => const CreateChannelView(),
+                ),
+              );
             },
           ),
           const SizedBox(width: 8),
