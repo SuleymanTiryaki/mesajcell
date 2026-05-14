@@ -1,9 +1,17 @@
-enum ChannelType { public, private }
+enum ChannelType { public, private, dm }
 
 extension ChannelTypeX on ChannelType {
-  String get value => name.toUpperCase(); // 'PUBLIC' / 'PRIVATE'
-  static ChannelType fromString(String v) =>
-      v.toUpperCase() == 'PRIVATE' ? ChannelType.private : ChannelType.public;
+  String get value => name.toUpperCase(); // 'PUBLIC' / 'PRIVATE' / 'DM'
+  static ChannelType fromString(String v) {
+    switch (v.toUpperCase()) {
+      case 'PRIVATE':
+        return ChannelType.private;
+      case 'DM':
+        return ChannelType.dm;
+      default:
+        return ChannelType.public;
+    }
+  }
 }
 
 // ─── Request ──────────────────────────────────────────────────────────────────
@@ -39,6 +47,7 @@ class ChannelModel {
   final String? iconUrl;
   final String? orgId;
   final String? createdBy;
+  final int memberCount;
 
   const ChannelModel({
     required this.id,
@@ -48,6 +57,7 @@ class ChannelModel {
     this.iconUrl,
     this.orgId,
     this.createdBy,
+    this.memberCount = 0,
   });
 
   factory ChannelModel.fromJson(Map<String, dynamic> json) => ChannelModel(
@@ -58,6 +68,7 @@ class ChannelModel {
         iconUrl: json['icon_url'] as String?,
         orgId: json['org_id'] as String?,
         createdBy: json['created_by'] as String?,
+        memberCount: json['member_count'] as int? ?? 0,
       );
 }
 
@@ -83,3 +94,26 @@ class CreateChannelResponse {
     );
   }
 }
+
+// ─── Channels list response ───────────────────────────────────────────────────
+
+class GetChannelsResponse {
+  final bool success;
+  final List<ChannelModel> channels;
+
+  const GetChannelsResponse({
+    required this.success,
+    required this.channels,
+  });
+
+  factory GetChannelsResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as List<dynamic>? ?? [];
+    return GetChannelsResponse(
+      success: json['success'] as bool? ?? false,
+      channels: data
+          .map((e) => ChannelModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+}
+

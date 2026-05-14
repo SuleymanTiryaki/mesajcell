@@ -1,12 +1,32 @@
 import 'package:dio/dio.dart';
+import '../model/channel_member_model.dart';
+import '../model/channel_message_model.dart';
 import '../model/channel_model.dart';
 
 abstract class IChannelService {
   final Dio dio;
   IChannelService(this.dio);
 
-  static const String createChannelPath = '/api/v1/channels';
+  static const String channelsPath = '/api/v1/channels';
+  static const String publicChannelsPath = '/api/v1/channels/public';
+  static const String orgUsersPath = '/api/v1/org/users';
 
-  /// Yeni kanal oluştur — Bearer token AppDio interceptor tarafından eklenir.
+  static String membersPath(String channelId) =>
+      '/api/v1/channels/$channelId/members';
+
+  static String inviteMemberPath(String channelId) =>
+      '/api/v1/channels/$channelId/invite';
+
+  static String messagesPath(String channelId) =>
+      '/api/v1/channels/$channelId/messages';
+
   Future<CreateChannelResponse?> createChannel(CreateChannelRequest request);
+  Future<GetChannelsResponse?> getChannels();
+  Future<GetChannelsResponse?> getPublicChannels();
+  Future<ChannelMembersResponse?> getChannelMembers(String channelId);
+  Future<bool> addMember(String channelId, String userId);
+  Future<bool> removeMember(String channelId, String userId);
+  Future<OrgUsersResponse?> getOrgUsers();
+  Future<GetMessagesResponse?> getMessages(String channelId);
+  Future<SendMessageResponse?> sendMessage(String channelId, String content);
 }

@@ -187,8 +187,9 @@ class _TypeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const types = [ChannelType.public, ChannelType.private];
     return Row(
-      children: ChannelType.values.map((type) {
+      children: types.map((type) {
         final isSelected = selected == type;
         return Expanded(
           child: Padding(
