@@ -1,18 +1,26 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:mesajcell/product/home/view/home_view.dart';
-import 'package:mesajcell/product/utility/const/constant_string.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
+import 'package:mesajcell/features/utility/const/constant_string.dart';
+import 'package:mesajcell/features/utility/notifier/theme_notifier.dart';
+import 'package:mesajcell/features/utility/theme/app_theme.dart';
+import 'package:mesajcell/product/auth/view/auth_view.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   runApp(
-    EasyLocalization(
-      supportedLocales: ConstantString.supportedLocales,
-      path: ConstantString.langPath,
-      fallbackLocale: ConstantString.trLocale,
-      startLocale: ConstantString.trLocale,
-      child: const MyApp(),
+    ChangeNotifierProvider(
+      create: (_) => ThemeNotifier(),
+      child: EasyLocalization(
+        supportedLocales: ConstantString.supportedLocales,
+        path: ConstantString.langPath,
+        fallbackLocale: ConstantString.trLocale,
+        startLocale: ConstantString.trLocale,
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -22,17 +30,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = context.watch<ThemeNotifier>();
     return MaterialApp(
       title: 'MesajCell',
       debugShowCheckedModeBanner: false,
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF6C3EED)),
-        useMaterial3: true,
-      ),
-      home: const HomeView(),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeNotifier.themeMode,
+      home: const AuthView(),
     );
   }
 }
