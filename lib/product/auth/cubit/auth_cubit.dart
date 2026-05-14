@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../features/core/app_logger.dart';
+import '../../../features/core/app_session.dart';
 import '../model/login_model.dart';
 import '../model/otp_model.dart';
 import '../service/IAuth_service.dart'; // ignore: file_names
@@ -98,8 +99,13 @@ class AuthCubit extends Cubit<AuthState> {
       );
 
       if (response?.success == true) {
-        // TODO: token'ı güvenli storage'a kaydet (response.token)
         AppLogger.i('[AuthCubit] OTP doğrulandı → ana sayfaya yönlendir');
+        if (response!.accessToken != null) {
+          AppSession.instance.setTokens(
+            accessToken: response.accessToken!,
+            refreshToken: response.refreshToken,
+          );
+        }
         emit(state.copyWith(status: AuthStatus.otpVerified));
       } else {
         AppLogger.w('[AuthCubit] OTP hatalı: ${response?.message}');

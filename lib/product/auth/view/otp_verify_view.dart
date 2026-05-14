@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../features/core/app_dio.dart';
 import '../../../features/core/app_logger.dart';
+import '../../../features/core/app_session.dart';
 import '../../../features/utility/const/constant_color.dart';
 import '../model/otp_model.dart';
 import '../service/auth_service.dart';
@@ -48,6 +49,13 @@ class _OtpVerifyViewState extends State<OtpVerifyView> {
 
       if (response?.success == true) {
         AppLogger.i('[OtpVerifyView] OTP doğrulandı → MainShell');
+        // Token'ları oturuma kaydet
+        if (response!.accessToken != null) {
+          AppSession.instance.setTokens(
+            accessToken: response.accessToken!,
+            refreshToken: response.refreshToken,
+          );
+        }
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const MainShell()),
           (_) => false,
