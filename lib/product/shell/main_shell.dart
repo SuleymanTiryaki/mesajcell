@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mesajcell/product/channel/view/public_channels_view.dart';
 import 'package:mesajcell/product/home/view/home_view.dart';
 import 'package:mesajcell/product/settings/view/settings_view.dart';
 
@@ -14,7 +15,7 @@ class _MainShellState extends State<MainShell> {
 
   static const List<Widget> _pages = [
     HomeView(),
-    _PlaceholderView(label: 'Aramalar', icon: Icons.call_outlined),
+    PublicChannelsView(),
     _PlaceholderView(label: 'Güncelleme', icon: Icons.circle_notifications_outlined),
     SettingsView(),
   ];
@@ -39,9 +40,9 @@ class _MainShellState extends State<MainShell> {
             label: 'Sohbetler',
           ),
           NavigationDestination(
-            icon: Icon(Icons.call_outlined),
-            selectedIcon: Icon(Icons.call),
-            label: 'Aramalar',
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore),
+            label: 'Açık Kanallar',
           ),
           NavigationDestination(
             icon: Icon(Icons.circle_notifications_outlined),
