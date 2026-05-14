@@ -6,22 +6,26 @@ class LoginRequest {
   LoginRequest({required this.phoneNumber, required this.password});
 
   Map<String, dynamic> toJson() => {
-        'phoneNumber': phoneNumber,
+        'phone_number': phoneNumber,
         'password': password,
       };
 }
 
-/// Telefon + şifre cevabı → OTP gönderir
+/// Telefon + şifre cevabı → OTP tetiklenir
 class LoginResponse {
-  final bool? success;
+  final bool success;
   final String? message;
-  final String? userId; // TODO: API'ye göre güncellenecek
+  final String? userId;
 
-  LoginResponse({this.success, this.message, this.userId});
+  LoginResponse({
+    required this.success,
+    this.message,
+    this.userId,
+  });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) => LoginResponse(
-        success: json['success'],
-        message: json['message'],
-        userId: json['userId']?.toString(),
+        success: json['success'] as bool? ?? false,
+        message: json['message'] as String?,
+        userId: (json['data']?['user_id'] ?? json['userId'])?.toString(),
       );
 }

@@ -53,7 +53,15 @@ class AuthCubit extends Cubit<AuthState> {
         LoginRequest(phoneNumber: phone, password: password),
       );
 
-      if (response?.success == true) {
+      if (response == null) {
+        emit(state.copyWith(
+          status: AuthStatus.error,
+          errorMessage: 'Sunucuya bağlanılamadı.',
+        ));
+        return;
+      }
+
+      if (response.success) {
         // OTP gönderildi → 2. adıma geç
         AppLogger.i('[AuthCubit] login başarılı → OTP gönderildi');
         emit(state.copyWith(
@@ -62,10 +70,10 @@ class AuthCubit extends Cubit<AuthState> {
           phoneNumber: phone,
         ));
       } else {
-        AppLogger.w('[AuthCubit] login başarısız: ${response?.message}');
+        AppLogger.w('[AuthCubit] login başarısız: ${response.message}');
         emit(state.copyWith(
           status: AuthStatus.error,
-          errorMessage: response?.message ?? 'Giriş başarısız.',
+          errorMessage: response.message ?? 'Giriş başarısız.',
         ));
       }
     } catch (e, st) {

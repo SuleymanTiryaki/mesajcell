@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
+import '../../../features/core/app_logger.dart';
 import '../../../features/core/base_dio_service.dart';
 import '../model/login_model.dart';
 import '../model/otp_model.dart';
@@ -13,17 +13,14 @@ class AuthService extends IAuthService {
   @override
   Future<LoginResponse?> postLogin(LoginRequest request) async {
     try {
+      AppLogger.d('[AuthService] postLogin → ${request.toJson()}');
       final response = await dio.post(
         IAuthService.loginPath,
         data: request.toJson(),
       );
-      if (response.statusCode == HttpStatus.ok) {
-        return LoginResponse.fromJson(response.data);
-      }
-      return null;
+      return LoginResponse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw BaseDioService.service.handleDioError(e);
-    } catch (_) {
+      BaseDioService.service.handleDioError(e);
       return null;
     }
   }
@@ -31,17 +28,14 @@ class AuthService extends IAuthService {
   @override
   Future<OtpResponse?> postVerifyOtp(OtpRequest request) async {
     try {
+      AppLogger.d('[AuthService] postVerifyOtp → ${request.toJson()}');
       final response = await dio.post(
         IAuthService.verifyOtpPath,
         data: request.toJson(),
       );
-      if (response.statusCode == HttpStatus.ok) {
-        return OtpResponse.fromJson(response.data);
-      }
-      return null;
+      return OtpResponse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw BaseDioService.service.handleDioError(e);
-    } catch (_) {
+      BaseDioService.service.handleDioError(e);
       return null;
     }
   }
@@ -49,14 +43,14 @@ class AuthService extends IAuthService {
   @override
   Future<bool> postResendOtp(String phoneNumber) async {
     try {
-      final response = await dio.post(
+      AppLogger.d('[AuthService] postResendOtp → $phoneNumber');
+      await dio.post(
         IAuthService.resendOtpPath,
-        data: {'phoneNumber': phoneNumber},
+        data: {'phone_number': phoneNumber},
       );
-      return response.statusCode == HttpStatus.ok;
+      return true;
     } on DioException catch (e) {
-      throw BaseDioService.service.handleDioError(e);
-    } catch (_) {
+      BaseDioService.service.handleDioError(e);
       return false;
     }
   }
@@ -64,18 +58,14 @@ class AuthService extends IAuthService {
   @override
   Future<RegisterResponse?> postRegister(RegisterRequest request) async {
     try {
+      AppLogger.d('[AuthService] postRegister → ${request.toJson()}');
       final response = await dio.post(
         IAuthService.registerPath,
         data: request.toJson(),
       );
-      if (response.statusCode == HttpStatus.ok ||
-          response.statusCode == 201) {
-        return RegisterResponse.fromJson(response.data);
-      }
-      return null;
+      return RegisterResponse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw BaseDioService.service.handleDioError(e);
-    } catch (_) {
+      BaseDioService.service.handleDioError(e);
       return null;
     }
   }
@@ -84,18 +74,15 @@ class AuthService extends IAuthService {
   Future<RegisterAdminResponse?> postRegisterAdmin(
       RegisterAdminRequest request) async {
     try {
+      AppLogger.d('[AuthService] postRegisterAdmin → ${request.toJson()}');
       final response = await dio.post(
         IAuthService.registerAdminPath,
         data: request.toJson(),
       );
-      if (response.statusCode == HttpStatus.ok ||
-          response.statusCode == 201) {
-        return RegisterAdminResponse.fromJson(response.data);
-      }
-      return null;
+      return RegisterAdminResponse.fromJson(
+          response.data as Map<String, dynamic>);
     } on DioException catch (e) {
-      throw BaseDioService.service.handleDioError(e);
-    } catch (_) {
+      BaseDioService.service.handleDioError(e);
       return null;
     }
   }
