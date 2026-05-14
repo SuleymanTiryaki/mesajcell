@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mesajcell/features/core/socket_service.dart';
 import 'package:mesajcell/product/channel/view/public_channels_view.dart';
 import 'package:mesajcell/product/home/view/home_view.dart';
 import 'package:mesajcell/product/settings/view/settings_view.dart';
@@ -12,6 +13,18 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    SocketService.instance.connect();
+  }
+
+  @override
+  void dispose() {
+    SocketService.instance.disconnect();
+    super.dispose();
+  }
 
   static const List<Widget> _pages = [
     HomeView(),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../features/core/socket_service.dart';
 import '../../../features/utility/const/constant_color.dart';
 import '../cubit/channel_members_cubit.dart';
 import '../cubit/message_cubit.dart';
@@ -67,18 +68,43 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
     _textController.clear();
+    // Typing bitti
+    SocketService.instance.sendTyping(widget.channel.id, isTyping: false);
     context.read<MessageCubit>().sendMessage(text);
+  }
+
+  void _onTextChanged(String value) {
+    SocketService.instance.sendTyping(
+      widget.channel.id,
+      isTyping: value.isNotEmpty,
+    );
+  }
+
+  void _sendReadReceipt(List<MessageModel> messages) {
+    if (messages.isEmpty) return;
+    SocketService.instance
+        .sendReadReceipt(widget.channel.id, messages.last.id);
   }
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
-        // Yeni mesaj gelince en alta kaydır
+        // Yeni mesaj gelince en alta kaydır + read receipt gönder
         BlocListener<MessageCubit, MessageState>(
           listenWhen: (prev, curr) =>
               curr.messages.length != prev.messages.length,
-          listener: (ctx, st) => _scrollToBottom(),
+          listener: (ctx, st) {
+            _scrollToBottom();
+            _sendReadReceipt(st.messages);
+          },
+        ),
+        // Mesajlar ilk yüklenince read receipt gönder
+        BlocListener<MessageCubit, MessageState>(
+          listenWhen: (prev, curr) =>
+              prev.status != MessageStatus.success &&
+              curr.status == MessageStatus.success,
+          listener: (ctx, st) => _sendReadReceipt(st.messages),
         ),
         // Üye işlemi SnackBar
         BlocListener<ChannelMembersCubit, ChannelMembersState>(
@@ -108,10 +134,18 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
           ],
         ),
         endDrawer: _MembersDrawer(channel: widget.channel),
-        body: _ChatArea(scrollController: _scrollController),
+        body: Column(
+          children: [
+            Expanded(child: _ChatArea(scrollController: _scrollController)),
+            _TypingIndicator(),
+          ],
+        ),
         bottomNavigationBar: _MessageInput(
           controller: _textController,
           onSend: _send,
+          onChanged: _onTextChanged,
+          onEditingComplete: () =>
+              SocketService.instance.sendTyping(widget.channel.id, isTyping: false),
         ),
       ),
     );
@@ -272,13 +306,54 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
+// ─── Typing indicator ────────────────────────────────────────────────────────
+
+class _TypingIndicator extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ChannelMembersCubit, ChannelMembersState>(
+      buildWhen: (prev, curr) => prev.typingUserName != curr.typingUserName,
+      builder: (context, state) {
+        if (state.typingUserName == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 1.5),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                state.typingUserName!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontStyle: FontStyle.italic,
+                    ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 // ─── Mesaj input bar ──────────────────────────────────────────────────────────
 
 class _MessageInput extends StatelessWidget {
   final TextEditingController controller;
   final VoidCallback onSend;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onEditingComplete;
 
-  const _MessageInput({required this.controller, required this.onSend});
+  const _MessageInput({
+    required this.controller,
+    required this.onSend,
+    required this.onChanged,
+    required this.onEditingComplete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -300,6 +375,8 @@ class _MessageInput extends StatelessWidget {
                 controller: controller,
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => onSend(),
+                onChanged: onChanged,
+                onEditingComplete: onEditingComplete,
                 decoration: InputDecoration(
                   hintText: 'Mesaj yaz...',
                   isDense: true,

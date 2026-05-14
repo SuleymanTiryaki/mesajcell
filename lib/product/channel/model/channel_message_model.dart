@@ -23,6 +23,21 @@ class MessageModel {
 
   bool get isMe => senderId == AppSession.instance.userId;
 
+  MessageModel copyWith({
+    String? content,
+    bool? isDeleted,
+  }) =>
+      MessageModel(
+        id: id,
+        channelId: channelId,
+        senderId: senderId,
+        senderName: senderName,
+        content: content ?? this.content,
+        isDeleted: isDeleted ?? this.isDeleted,
+        isPinned: isPinned,
+        createdAt: createdAt,
+      );
+
   factory MessageModel.fromJson(Map<String, dynamic> json) => MessageModel(
         id: json['id'] as String? ?? '',
         channelId: json['channel_id'] as String? ?? '',

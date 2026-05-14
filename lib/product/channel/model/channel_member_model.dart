@@ -2,21 +2,38 @@ class ChannelMemberModel {
   final String id;
   final String fullName;
   final String role; // 'CHANNEL_ADMIN', 'MEMBER'
+  final String presenceStatus; // 'ONLINE' | 'OFFLINE' | 'BUSY'
 
   const ChannelMemberModel({
     required this.id,
     required this.fullName,
     required this.role,
+    this.presenceStatus = 'OFFLINE',
   });
 
   bool get isAdmin => role == 'CHANNEL_ADMIN';
+  bool get isOnline => presenceStatus == 'ONLINE';
+
+  ChannelMemberModel copyWith({String? presenceStatus}) => ChannelMemberModel(
+        id: id,
+        fullName: fullName,
+        role: role,
+        presenceStatus: presenceStatus ?? this.presenceStatus,
+      );
 
   factory ChannelMemberModel.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>?;
     return ChannelMemberModel(
-      id: user?['id'] as String? ?? json['user_id'] as String? ?? json['id'] as String? ?? '',
-      fullName: user?['full_name'] as String? ?? json['full_name'] as String? ?? '',
+      id: user?['id'] as String? ??
+          json['user_id'] as String? ??
+          json['id'] as String? ??
+          '',
+      fullName:
+          user?['full_name'] as String? ?? json['full_name'] as String? ?? '',
       role: json['role'] as String? ?? 'MEMBER',
+      presenceStatus: user?['presence_status'] as String? ??
+          json['presence_status'] as String? ??
+          'OFFLINE',
     );
   }
 }

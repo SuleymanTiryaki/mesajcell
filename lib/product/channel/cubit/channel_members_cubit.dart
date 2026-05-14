@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../features/core/app_dio.dart';
 import '../../../features/core/app_logger.dart';
 import '../../../features/core/app_session.dart';
+import '../../../features/core/socket_service.dart';
 import '../model/channel_member_model.dart';
 import '../service/channel_service.dart';
 
@@ -11,9 +13,55 @@ class ChannelMembersCubit extends Cubit<ChannelMembersState> {
   final ChannelService _service;
   final String channelId;
 
+  StreamSubscription<Map<String, dynamic>>? _typingSub;
+  StreamSubscription<Map<String, dynamic>>? _statusSub;
+  Timer? _typingTimer;
+
   ChannelMembersCubit({required this.channelId})
       : _service = ChannelService(AppDio.create()),
-        super(const ChannelMembersState());
+        super(const ChannelMembersState()) {
+    _subscribeToSocket();
+  }
+
+  void _subscribeToSocket() {
+    // user:typing → "Zeynep yazıyor..." göster, 3 sn sonra kaldır
+    _typingSub = SocketService.instance.onTyping.listen((data) {
+      if (data['channel_id'] != channelId) return;
+      final isTyping = data['is_typing'] as bool? ?? false;
+      if (!isTyping) {
+        _typingTimer?.cancel();
+        if (!isClosed) emit(state.copyWith(clearTyping: true));
+        return;
+      }
+      final userId = data['user_id'] as String? ?? '';
+      final member = state.members.where((m) => m.id == userId).firstOrNull;
+      final name = member?.fullName ?? 'Biri';
+      _typingTimer?.cancel();
+      if (!isClosed) emit(state.copyWith(typingUserName: '$name yazıyor...'));
+      _typingTimer = Timer(const Duration(seconds: 3), () {
+        if (!isClosed) emit(state.copyWith(clearTyping: true));
+      });
+    });
+
+    // user:status → üye listesindeki presence_status'ı güncelle
+    _statusSub = SocketService.instance.onStatus.listen((data) {
+      final userId = data['user_id'] as String?;
+      final status = data['presence_status'] as String?;
+      if (userId == null || status == null) return;
+      final updated = state.members
+          .map((m) => m.id == userId ? m.copyWith(presenceStatus: status) : m)
+          .toList();
+      if (!isClosed) emit(state.copyWith(members: updated));
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _typingSub?.cancel();
+    _statusSub?.cancel();
+    _typingTimer?.cancel();
+    return super.close();
+  }
 
   Future<void> fetchMembers() async {
     emit(state.copyWith(status: ChannelMembersStatus.loading));

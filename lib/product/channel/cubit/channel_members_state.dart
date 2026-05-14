@@ -12,6 +12,7 @@ class ChannelMembersState {
   final String? addingUserId;
   final String? removingUserId;
   final String? lastActionMessage;
+  final String? typingUserName; // "Zeynep yazıyor..."
 
   const ChannelMembersState({
     this.status = ChannelMembersStatus.initial,
@@ -23,6 +24,7 @@ class ChannelMembersState {
     this.addingUserId,
     this.removingUserId,
     this.lastActionMessage,
+    this.typingUserName,
   });
 
   ChannelMembersState copyWith({
@@ -35,10 +37,12 @@ class ChannelMembersState {
     String? addingUserId,
     String? removingUserId,
     String? lastActionMessage,
+    String? typingUserName,
     bool clearRemovingUserId = false,
     bool clearAddingUserId = false,
     bool clearError = false,
     bool clearActionMessage = false,
+    bool clearTyping = false,
   }) =>
       ChannelMembersState(
         status: status ?? this.status,
@@ -47,10 +51,14 @@ class ChannelMembersState {
         isCurrentUserAdmin: isCurrentUserAdmin ?? this.isCurrentUserAdmin,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         orgUsersLoading: orgUsersLoading ?? this.orgUsersLoading,
-        addingUserId: clearAddingUserId ? null : (addingUserId ?? this.addingUserId),
+        addingUserId:
+            clearAddingUserId ? null : (addingUserId ?? this.addingUserId),
         removingUserId:
             clearRemovingUserId ? null : (removingUserId ?? this.removingUserId),
-        lastActionMessage:
-            clearActionMessage ? null : (lastActionMessage ?? this.lastActionMessage),
+        lastActionMessage: clearActionMessage
+            ? null
+            : (lastActionMessage ?? this.lastActionMessage),
+        typingUserName:
+            clearTyping ? null : (typingUserName ?? this.typingUserName),
       );
 }
