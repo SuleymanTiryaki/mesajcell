@@ -86,4 +86,16 @@ class AuthService extends IAuthService {
       return null;
     }
   }
+
+  @override
+  Future<bool> postLogout() async {
+    try {
+      AppLogger.d('[AuthService] postLogout');
+      await dio.post(IAuthService.logoutPath);
+      return true;
+    } on DioException catch (e) {
+      BaseDioService.service.handleDioError(e);
+      return false;
+    }
+  }
 }

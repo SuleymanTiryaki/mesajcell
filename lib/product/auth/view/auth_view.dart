@@ -31,8 +31,8 @@ class _AuthBody extends StatelessWidget {
     return BlocListener<AuthCubit, AuthState>(
       listenWhen: (p, c) => p.status != c.status,
       listener: (context, state) {
-        // OTP doğrulandı → ana sayfaya git
-        if (state.status == AuthStatus.otpVerified) {
+        if (state.status == AuthStatus.loginSuccess ||
+            state.status == AuthStatus.otpVerified) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const MainShell()),
             (_) => false,

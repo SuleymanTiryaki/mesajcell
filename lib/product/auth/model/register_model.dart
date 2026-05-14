@@ -1,24 +1,21 @@
 class RegisterRequest {
   final String gsmNumber;
   final String fullName;
-  final String email;
   final String password;
-  final String orgId;
+  final String inviteToken;
 
   const RegisterRequest({
     required this.gsmNumber,
     required this.fullName,
-    required this.email,
     required this.password,
-    required this.orgId,
+    required this.inviteToken,
   });
 
   Map<String, dynamic> toJson() => {
         'gsm_number': gsmNumber,
         'full_name': fullName,
-        'email': email,
         'password': password,
-        'org_id': orgId,
+        'invite_token': inviteToken,
       };
 }
 

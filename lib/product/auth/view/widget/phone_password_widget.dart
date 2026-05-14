@@ -32,7 +32,6 @@ class _PhonePasswordWidgetState extends State<PhonePasswordWidget> {
             decoration: const InputDecoration(
               labelText: 'Telefon Numarası',
               prefixIcon: Icon(Icons.phone_outlined),
-              prefixText: '+90 ',
             ),
             validator: (v) {
               if (v == null || v.trim().length < 10) {

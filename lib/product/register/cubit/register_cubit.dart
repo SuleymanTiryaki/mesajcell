@@ -12,9 +12,7 @@ class RegisterCubit extends Cubit<RegisterState> {
 
   final TextEditingController gsmController = TextEditingController();
   final TextEditingController fullNameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController orgIdController = TextEditingController();
 
   RegisterCubit({required this.service}) : super(const RegisterState());
 
@@ -22,18 +20,14 @@ class RegisterCubit extends Cubit<RegisterState> {
   Future<void> close() {
     gsmController.dispose();
     fullNameController.dispose();
-    emailController.dispose();
     passwordController.dispose();
-    orgIdController.dispose();
     return super.close();
   }
 
-  Future<void> register() async {
+  Future<void> register({required String inviteToken}) async {
     final gsm = gsmController.text.trim();
     final fullName = fullNameController.text.trim();
-    final email = emailController.text.trim();
     final password = passwordController.text.trim();
-    final orgId = orgIdController.text.trim();
 
     if (gsm.isEmpty || gsm.length < 10) {
       emit(state.copyWith(
@@ -49,24 +43,10 @@ class RegisterCubit extends Cubit<RegisterState> {
       ));
       return;
     }
-    if (email.isEmpty || !email.contains('@')) {
-      emit(state.copyWith(
-        status: RegisterStatus.error,
-        errorMessage: 'Geçerli bir e-posta adresi girin.',
-      ));
-      return;
-    }
     if (password.length < 6) {
       emit(state.copyWith(
         status: RegisterStatus.error,
         errorMessage: 'Şifre en az 6 karakter olmalıdır.',
-      ));
-      return;
-    }
-    if (orgId.isEmpty) {
-      emit(state.copyWith(
-        status: RegisterStatus.error,
-        errorMessage: 'Organizasyon ID boş bırakılamaz.',
       ));
       return;
     }
@@ -78,9 +58,8 @@ class RegisterCubit extends Cubit<RegisterState> {
         RegisterRequest(
           gsmNumber: gsm,
           fullName: fullName,
-          email: email,
           password: password,
-          orgId: orgId,
+          inviteToken: inviteToken,
         ),
       );
 
@@ -105,3 +84,4 @@ class RegisterCubit extends Cubit<RegisterState> {
 
   void clearError() => emit(state.clearError());
 }
+

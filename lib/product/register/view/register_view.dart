@@ -4,6 +4,7 @@ import '../../../features/core/app_dio.dart';
 import '../../../features/utility/const/constant_color.dart';
 import '../../auth/service/auth_service.dart';
 import '../../auth/view/otp_verify_view.dart';
+import '../cubit/invite_info_cubit.dart';
 import '../cubit/register_cubit.dart';
 import 'register_admin_view.dart';
 
@@ -148,10 +149,13 @@ class _InviteRegisterView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => RegisterCubit(
-        service: AuthService(AppDio.create()),
-      ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => InviteInfoCubit()),
+        BlocProvider(
+          create: (_) => RegisterCubit(service: AuthService(AppDio.create())),
+        ),
+      ],
       child: const _InviteRegisterBody(),
     );
   }
@@ -165,235 +169,316 @@ class _InviteRegisterBody extends StatefulWidget {
 }
 
 class _InviteRegisterBodyState extends State<_InviteRegisterBody> {
+  final _linkController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
 
   @override
-  Widget build(BuildContext context) {
-    return BlocListener<RegisterCubit, RegisterState>(
-      listenWhen: (p, c) => p.status != c.status,
-      listener: (context, state) {
-        if (state.status == RegisterStatus.success) {
-          final gsm = context.read<RegisterCubit>().gsmController.text.trim();
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => OtpVerifyView(gsmNumber: gsm),
-            ),
-          );
-          return;
-        }
+  void dispose() {
+    _linkController.dispose();
+    super.dispose();
+  }
 
-        if (state.status == RegisterStatus.error &&
-            state.errorMessage != null) {
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              SnackBar(
-                content: Text(state.errorMessage!),
-                backgroundColor: Colors.red.shade700,
-                behavior: SnackBarBehavior.floating,
-                margin: const EdgeInsets.all(16),
-              ),
-            );
-          context.read<RegisterCubit>().clearError();
-        }
-      },
+  @override
+  Widget build(BuildContext context) {
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<RegisterCubit, RegisterState>(
+          listenWhen: (p, c) => p.status != c.status,
+          listener: (context, state) {
+            if (state.status == RegisterStatus.success) {
+              final gsm =
+                  context.read<RegisterCubit>().gsmController.text.trim();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => OtpVerifyView(gsmNumber: gsm),
+                ),
+              );
+              return;
+            }
+            if (state.status == RegisterStatus.error &&
+                state.errorMessage != null) {
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Text(state.errorMessage!),
+                    backgroundColor: Colors.red.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    margin: const EdgeInsets.all(16),
+                  ),
+                );
+              context.read<RegisterCubit>().clearError();
+            }
+          },
+        ),
+        BlocListener<InviteInfoCubit, InviteInfoState>(
+          listenWhen: (p, c) => p.status != c.status,
+          listener: (context, state) {
+            if (state.status == InviteInfoStatus.error &&
+                state.errorMessage != null) {
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    content: Text(state.errorMessage!),
+                    backgroundColor: Colors.red.shade700,
+                    behavior: SnackBarBehavior.floating,
+                    margin: const EdgeInsets.all(16),
+                  ),
+                );
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Davetle Katıl'),
           leading: const BackButton(),
         ),
         body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Başlık
-                  Text(
-                    'Yeni Hesap Oluştur',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Bilgilerinizi eksiksiz doldurun.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color:
-                              Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // GSM Numarası
-                  _buildField(
-                    controller: context.read<RegisterCubit>().gsmController,
-                    label: 'GSM Numarası',
-                    hint: '+905559876543',
-                    icon: Icons.phone_outlined,
-                    keyboardType: TextInputType.phone,
-                    validator: (v) {
-                      if (v == null || v.trim().length < 10) {
-                        return 'Geçerli bir GSM numarası girin.';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Ad Soyad
-                  _buildField(
-                    controller: context.read<RegisterCubit>().fullNameController,
-                    label: 'Ad Soyad',
-                    icon: Icons.person_outline,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Ad Soyad boş bırakılamaz.' : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // E-posta
-                  _buildField(
-                    controller: context.read<RegisterCubit>().emailController,
-                    label: 'E-posta',
-                    icon: Icons.email_outlined,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (v) {
-                      if (v == null || !v.contains('@')) {
-                        return 'Geçerli bir e-posta adresi girin.';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Şifre
-                  TextFormField(
-                    controller: context.read<RegisterCubit>().passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Şifre',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                        ),
-                        onPressed: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
-                      ),
-                    ),
-                    validator: (v) {
-                      if (v == null || v.length < 6) {
-                        return 'Şifre en az 6 karakter olmalıdır.';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Organizasyon ID
-                  _buildField(
-                    controller: context.read<RegisterCubit>().orgIdController,
-                    label: 'Organizasyon ID',
-                    icon: Icons.business_outlined,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Organizasyon ID boş bırakılamaz.' : null,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Kayıt ol butonu
-                  BlocBuilder<RegisterCubit, RegisterState>(
-                    buildWhen: (p, c) => p.status != c.status,
-                    builder: (context, state) {
-                      final isLoading = state.status == RegisterStatus.loading;
-                      return FilledButton(
-                        onPressed:
-                            isLoading ? null : () => _submit(context),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: ConstColor.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: isLoading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: ConstColor.white,
-                                ),
-                              )
-                            : const Text(
-                                'Kayıt Ol',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Zaten hesabın var mı?
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Zaten hesabınız var mı?',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text(
-                          'Giriş Yap',
-                          style: TextStyle(
-                            color: ConstColor.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+          child: BlocBuilder<InviteInfoCubit, InviteInfoState>(
+            builder: (context, inviteState) {
+              if (inviteState.status == InviteInfoStatus.success) {
+                return _buildRegisterForm(context, inviteState);
+              }
+              return _buildLinkStep(context, inviteState);
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildField({
-    required TextEditingController controller,
-    required String label,
-    String? hint,
-    required IconData icon,
-    TextInputType? keyboardType,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: Icon(icon),
+  // ─── Adım 1: Davet linki yapıştırma ───────────────────────────────────────
+  Widget _buildLinkStep(BuildContext context, InviteInfoState inviteState) {
+    final isLoading = inviteState.status == InviteInfoStatus.loading;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Icon(Icons.link_rounded, size: 56, color: ConstColor.primary),
+          const SizedBox(height: 24),
+          Text(
+            'Davet Linki',
+            style: Theme.of(context)
+                .textTheme
+                .headlineSmall
+                ?.copyWith(fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Size gönderilen davet linkini aşağıya yapıştırın.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 40),
+          TextFormField(
+            controller: _linkController,
+            keyboardType: TextInputType.url,
+            decoration: const InputDecoration(
+              labelText: 'Davet Linki',
+              hintText: 'https://...',
+              prefixIcon: Icon(Icons.insert_link_outlined),
+            ),
+          ),
+          const SizedBox(height: 24),
+          FilledButton(
+            onPressed: isLoading
+                ? null
+                : () {
+                    final link = _linkController.text.trim();
+                    if (link.isEmpty) return;
+                    context.read<InviteInfoCubit>().fetchFromLink(link);
+                  },
+            style: FilledButton.styleFrom(
+              backgroundColor: ConstColor.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ConstColor.white,
+                    ),
+                  )
+                : const Text(
+                    'Devam Et',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+          ),
+        ],
       ),
-      validator: validator,
     );
   }
 
-  void _submit(BuildContext context) {
-    if (_formKey.currentState?.validate() ?? false) {
-      context.read<RegisterCubit>().register();
-    }
+  // ─── Adım 2: Kayıt formu ──────────────────────────────────────────────────
+  Widget _buildRegisterForm(BuildContext context, InviteInfoState inviteState) {
+    final cubit = context.read<RegisterCubit>();
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Org başlığı
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ConstColor.primary.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline,
+                      color: ConstColor.primary, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "${inviteState.orgName}'e davet edildiniz!",
+                      style:
+                          Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: ConstColor.primary,
+                              ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            Text(
+              'Hesap Bilgileri',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+
+            // Ad Soyad
+            TextFormField(
+              controller: cubit.fullNameController,
+              decoration: const InputDecoration(
+                labelText: 'Ad Soyad',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Ad Soyad boş bırakılamaz.'
+                  : null,
+            ),
+            const SizedBox(height: 16),
+
+            // GSM Numarası
+            TextFormField(
+              controller: cubit.gsmController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'GSM Numarası',
+                hintText: '+905559876543',
+                prefixIcon: Icon(Icons.phone_outlined),
+              ),
+              validator: (v) {
+                if (v == null || v.trim().length < 10) {
+                  return 'Geçerli bir GSM numarası girin.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Şifre
+            TextFormField(
+              controller: cubit.passwordController,
+              obscureText: _obscurePassword,
+              decoration: InputDecoration(
+                labelText: 'Şifre',
+                prefixIcon: const Icon(Icons.lock_outline),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
+                ),
+              ),
+              validator: (v) {
+                if (v == null || v.length < 6) {
+                  return 'Şifre en az 6 karakter olmalıdır.';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 32),
+
+            // Kayıt ol butonu
+            BlocBuilder<RegisterCubit, RegisterState>(
+              buildWhen: (p, c) => p.status != c.status,
+              builder: (context, registerState) {
+                final isLoading = registerState.status == RegisterStatus.loading;
+                return FilledButton(
+                  onPressed: isLoading
+                      ? null
+                      : () {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            context.read<RegisterCubit>().register(
+                                  inviteToken: inviteState.inviteToken!,
+                                );
+                          }
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: ConstColor.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: ConstColor.white,
+                          ),
+                        )
+                      : const Text(
+                          'Kayıt Ol',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Farklı link kullan
+            Center(
+              child: TextButton.icon(
+                onPressed: () => context.read<InviteInfoCubit>().reset(),
+                icon: const Icon(Icons.arrow_back, size: 16),
+                label: const Text('Farklı bir link kullan'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
+

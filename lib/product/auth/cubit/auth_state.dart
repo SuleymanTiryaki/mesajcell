@@ -12,8 +12,10 @@ enum AuthStatus {
   loading,
   success,
   error,
-  otpSent,       // login başarılı → OTP tetiklendi
-  otpVerified,   // OTP doğrulandı → eve git
+  loginSuccess,  // login başarılı → direkt ana sayfaya git
+  loggedOut,     // çıkış yapıldı → AuthView'e git
+  otpSent,       // (kullanılmıyor — ileride gerekirse)
+  otpVerified,   // OTP doğrulandı → ana sayfaya git
   otpResent,     // OTP yeniden gönderildi
 }
 

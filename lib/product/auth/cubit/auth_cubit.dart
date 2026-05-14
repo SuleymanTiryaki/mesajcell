@@ -50,7 +50,7 @@ class AuthCubit extends Cubit<AuthState> {
 
     try {
       final response = await service.postLogin(
-        LoginRequest(phoneNumber: phone, password: password),
+        LoginRequest(gsmNumber: phone, password: password),
       );
 
       if (response == null) {
@@ -62,13 +62,14 @@ class AuthCubit extends Cubit<AuthState> {
       }
 
       if (response.success) {
-        // OTP gönderildi → 2. adıma geç
-        AppLogger.i('[AuthCubit] login başarılı → OTP gönderildi');
-        emit(state.copyWith(
-          status: AuthStatus.otpSent,
-          step: AuthStep.otp,
-          phoneNumber: phone,
-        ));
+        AppLogger.i('[AuthCubit] Login başarılı → ana sayfa');
+        if (response.accessToken != null) {
+          AppSession.instance.setTokens(
+            accessToken: response.accessToken!,
+            refreshToken: response.refreshToken,
+          );
+        }
+        emit(state.copyWith(status: AuthStatus.loginSuccess));
       } else {
         AppLogger.w('[AuthCubit] login başarısız: ${response.message}');
         emit(state.copyWith(
@@ -166,4 +167,18 @@ class AuthCubit extends Cubit<AuthState> {
 
   /// Hata mesajını sıfırla (snackbar sonrası kullanım için)
   void clearError() => emit(state.clearError());
+
+  // ─── Çıkış Yap ─────────────────────────────────────────────────────────────
+
+  Future<void> logout() async {
+    emit(state.copyWith(status: AuthStatus.loading));
+    try {
+      await service.postLogout();
+    } catch (_) {
+      // API hatası olsa bile session temizlensin
+    }
+    AppSession.instance.clear();
+    AppLogger.i('[AuthCubit] Çıkış yapıldı');
+    emit(state.copyWith(status: AuthStatus.loggedOut));
+  }
 }

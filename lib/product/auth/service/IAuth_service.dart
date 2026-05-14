@@ -14,6 +14,7 @@ abstract class IAuthService {
   static const String resendOtpPath = '/api/v1/auth/resend-otp';
   static const String registerPath = '/api/v1/auth/register';
   static const String registerAdminPath = '/api/v1/auth/register-admin';
+  static const String logoutPath = '/api/v1/auth/logout';
 
   /// 1. Adım: Telefon + şifre ile giriş → OTP tetiklenir
   Future<LoginResponse?> postLogin(LoginRequest request);
@@ -29,4 +30,7 @@ abstract class IAuthService {
 
   /// Şirket kur + admin kaydı
   Future<RegisterAdminResponse?> postRegisterAdmin(RegisterAdminRequest request);
+
+  /// Çıkış yap — Bearer token AppDio interceptor tarafından eklenir.
+  Future<bool> postLogout();
 }

@@ -1,31 +1,37 @@
 /// Telefon numarası ile giriş isteği
 class LoginRequest {
-  final String phoneNumber;
+  final String gsmNumber;
   final String password;
 
-  LoginRequest({required this.phoneNumber, required this.password});
+  LoginRequest({required this.gsmNumber, required this.password});
 
   Map<String, dynamic> toJson() => {
-        'phone_number': phoneNumber,
+        'gsm_number': gsmNumber,
         'password': password,
       };
 }
 
-/// Telefon + şifre cevabı → OTP tetiklenir
+/// Telefon + şifre cevabı → token döner, direkt giriş
 class LoginResponse {
   final bool success;
   final String? message;
-  final String? userId;
+  final String? accessToken;
+  final String? refreshToken;
 
   LoginResponse({
     required this.success,
     this.message,
-    this.userId,
+    this.accessToken,
+    this.refreshToken,
   });
 
-  factory LoginResponse.fromJson(Map<String, dynamic> json) => LoginResponse(
-        success: json['success'] as bool? ?? false,
-        message: json['message'] as String?,
-        userId: (json['data']?['user_id'] ?? json['userId'])?.toString(),
-      );
+  factory LoginResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] as Map<String, dynamic>?;
+    return LoginResponse(
+      success: json['success'] as bool? ?? false,
+      message: json['message'] as String?,
+      accessToken: data?['access_token'] as String?,
+      refreshToken: data?['refresh_token'] as String?,
+    );
+  }
 }
