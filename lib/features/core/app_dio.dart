@@ -44,12 +44,7 @@ final class AppDio {
           compact: false,
           maxWidth: 90,
           filter: (options, args) {
-            // Hassas header'ları gizle (Authorization, Cookie)
-            if (args.isResponse) return true;
-            final headers = options.headers;
-            if (headers.containsKey('Authorization')) {
-              headers['Authorization'] = '***';
-            }
+            // Sadece log çıktısını etkiler — gerçek header'a dokunma
             return true;
           },
         ),
