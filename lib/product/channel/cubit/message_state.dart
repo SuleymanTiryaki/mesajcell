@@ -10,6 +10,8 @@ class MessageState {
   final bool hasMore;
   final int currentPage;
   final String? errorMessage;
+  final List<PinnedMessage> pinnedMessages;
+  final bool loadingPinned;
 
   const MessageState({
     this.status = MessageStatus.initial,
@@ -19,6 +21,8 @@ class MessageState {
     this.hasMore = true,
     this.currentPage = 1,
     this.errorMessage,
+    this.pinnedMessages = const [],
+    this.loadingPinned = false,
   });
 
   MessageState copyWith({
@@ -29,6 +33,8 @@ class MessageState {
     bool? hasMore,
     int? currentPage,
     String? errorMessage,
+    List<PinnedMessage>? pinnedMessages,
+    bool? loadingPinned,
   }) =>
       MessageState(
         status: status ?? this.status,
@@ -38,5 +44,7 @@ class MessageState {
         hasMore: hasMore ?? this.hasMore,
         currentPage: currentPage ?? this.currentPage,
         errorMessage: errorMessage ?? this.errorMessage,
+        pinnedMessages: pinnedMessages ?? this.pinnedMessages,
+        loadingPinned: loadingPinned ?? this.loadingPinned,
       );
 }

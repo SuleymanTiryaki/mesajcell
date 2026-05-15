@@ -50,4 +50,32 @@ class NotificationService {
       return false;
     }
   }
+
+  /// Hedef kullanıcıya bildirim oluştur.
+  /// [type] → 'MENTION' | 'MESSAGE' | 'CHANNEL_INVITE'
+  Future<bool> createNotification({
+    required String userId,
+    required String type,
+    String? referenceId,
+  }) async {
+    try {
+      AppLogger.d('[NotificationService] createNotification user=$userId type=$type ref=$referenceId');
+      final response = await dio.post(
+        _notificationsPath,
+        data: {
+          'user_id': userId,
+          'type': type,
+          if (referenceId != null) 'reference_id': referenceId,
+        },
+      );
+      return _toMap(response.data)['success'] as bool? ?? false;
+    } on DioException catch (e) {
+      BaseDioService.service.handleDioError(e);
+      return false;
+    } catch (e, st) {
+      AppLogger.e('[NotificationService] createNotification hatası',
+          error: e, stackTrace: st);
+      return false;
+    }
+  }
 }

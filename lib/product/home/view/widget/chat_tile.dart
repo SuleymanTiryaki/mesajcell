@@ -99,6 +99,122 @@ class ChatTile extends StatelessWidget {
           }
         });
       },
+      onLongPress: () => _showNotificationPrefSheet(context),
+    );
+  }
+
+  void _showNotificationPrefSheet(BuildContext context) {
+    final cubit = context.read<ChannelListCubit>();
+    final current = channel.notificationPreference;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.notifications_outlined,
+                        color: ConstColor.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      '# ${channel.name} Bildirimleri',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(),
+              _NotifPrefTile(
+                icon: Icons.notifications_active_outlined,
+                label: 'Tüm mesajlar',
+                subtitle: 'Her yeni mesajda bildirim al',
+                value: 'ALL',
+                current: current,
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  cubit.updateNotificationPreference(channel.id, 'ALL');
+                },
+              ),
+              _NotifPrefTile(
+                icon: Icons.alternate_email,
+                label: 'Sadece Mentionlar',
+                subtitle: '@etiketlenince bildirim al',
+                value: 'MENTIONS_ONLY',
+                current: current,
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  cubit.updateNotificationPreference(
+                      channel.id, 'MENTIONS_ONLY');
+                },
+              ),
+              _NotifPrefTile(
+                icon: Icons.notifications_off_outlined,
+                label: 'Sessiz',
+                subtitle: 'Hiç bildirim alma',
+                value: 'MUTED',
+                current: current,
+                onTap: () {
+                  Navigator.pop(sheetCtx);
+                  cubit.updateNotificationPreference(channel.id, 'MUTED');
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NotifPrefTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final String value;
+  final String current;
+  final VoidCallback onTap;
+
+  const _NotifPrefTile({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.value,
+    required this.current,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = value == current;
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: isSelected ? ConstColor.primary : null,
+      ),
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? ConstColor.primary : null,
+        ),
+      ),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
+      trailing: isSelected
+          ? const Icon(Icons.check_circle, color: ConstColor.primary)
+          : null,
+      onTap: onTap,
     );
   }
 }

@@ -6,11 +6,13 @@ import '../../../features/core/app_session.dart';
 import '../../../features/core/socket_service.dart';
 import '../model/channel_member_model.dart';
 import '../service/channel_service.dart';
+import '../../notification/service/notification_service.dart';
 
 part 'channel_members_state.dart';
 
 class ChannelMembersCubit extends Cubit<ChannelMembersState> {
   final ChannelService _service;
+  final NotificationService _notifService;
   final String channelId;
 
   StreamSubscription<Map<String, dynamic>>? _typingSub;
@@ -19,6 +21,7 @@ class ChannelMembersCubit extends Cubit<ChannelMembersState> {
 
   ChannelMembersCubit({required this.channelId})
       : _service = ChannelService(AppDio.create()),
+        _notifService = NotificationService(AppDio.create()),
         super(const ChannelMembersState()) {
     _subscribeToSocket();
   }
@@ -118,6 +121,12 @@ class ChannelMembersCubit extends Cubit<ChannelMembersState> {
           clearAddingUserId: true,
           lastActionMessage: 'Üye başarıyla eklendi.',
         ));
+        // Eklenen kullanıcıya kanal davet bildirimi gönder
+        _notifService.createNotification(
+          userId: userId,
+          type: 'CHANNEL_INVITE',
+          referenceId: channelId,
+        );
       } else {
         emit(state.copyWith(
           clearAddingUserId: true,

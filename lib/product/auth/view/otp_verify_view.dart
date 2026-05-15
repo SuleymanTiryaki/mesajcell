@@ -51,6 +51,9 @@ class _OtpVerifyViewState extends State<OtpVerifyView> {
           await AppSession.instance.setTokens(
             accessToken: response.accessToken!,
             refreshToken: response.refreshToken,
+            userId: response.user?.id,
+            orgId: response.user?.orgId,
+            role: response.user?.role,
           );
         }
         if (!mounted) return;

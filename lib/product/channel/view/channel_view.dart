@@ -68,6 +68,7 @@ class _ChannelViewBody extends StatefulWidget {
 class _ChannelViewBodyState extends State<_ChannelViewBody> {
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
+  final _searchController = TextEditingController();
   Timer? _typingTimer;
 
   // Editing state
@@ -76,6 +77,14 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
 
   // Reply state
   MessageModel? _replyTo;
+
+  // Mention state
+  String? _mentionQuery;   // '@' sonrası yazılan kelime
+  int _mentionStart = -1;  // '@' karakterinin cursor pozisyonu
+
+  // Search state
+  bool _searchMode = false;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -87,6 +96,7 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
   void dispose() {
     _typingTimer?.cancel();
     _textController.dispose();
+    _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -178,6 +188,50 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
         SocketService.instance.sendTyping(widget.channel.id, isTyping: false);
       });
     }
+
+    // @mention tespiti
+    final cursor = _textController.selection.baseOffset;
+    if (cursor >= 0) {
+      final textBefore = value.substring(0, cursor.clamp(0, value.length));
+      final atIndex = textBefore.lastIndexOf('@');
+      if (atIndex >= 0) {
+        final afterAt = textBefore.substring(atIndex + 1);
+        // Boşluk yoksa mention sorgusu aktif
+        if (!afterAt.contains(' ') && !afterAt.contains('\n')) {
+          if (_mentionQuery != afterAt || _mentionStart != atIndex) {
+            setState(() {
+              _mentionQuery = afterAt;
+              _mentionStart = atIndex;
+            });
+          }
+          return;
+        }
+      }
+    }
+    if (_mentionQuery != null) {
+      setState(() {
+        _mentionQuery = null;
+        _mentionStart = -1;
+      });
+    }
+  }
+
+  void _insertMention(String fullName) {
+    final text = _textController.text;
+    final start = _mentionStart;
+    if (start < 0 || start >= text.length) return;
+    final before = text.substring(0, start);
+    final cursor = _textController.selection.baseOffset.clamp(0, text.length);
+    final after = cursor < text.length ? text.substring(cursor) : '';
+    final newText = '$before@$fullName $after';
+    _textController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: before.length + fullName.length + 2),
+    );
+    setState(() {
+      _mentionQuery = null;
+      _mentionStart = -1;
+    });
   }
 
   void _showMessageMenu(BuildContext ctx, MessageModel msg) {
@@ -233,14 +287,23 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
                   _showEmojiPicker(ctx, messageCubit, msg);
                 },
               ),
-            // Sabitle — sadece admin, silinmemiş
-            if (isAdmin && !msg.isDeleted)
+            // Sabitle — silinmemiş her mesaj (sunucu yetki kontrolü yapar)
+            if (!msg.isDeleted)
               ListTile(
                 leading: const Icon(Icons.push_pin_outlined),
                 title: const Text('Sabitle'),
-                onTap: () {
+                onTap: () async {
                   Navigator.pop(sheetCtx);
-                  messageCubit.pinMessage(msg.id);
+                  final ok = await messageCubit.pinMessage(msg.id);
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(ok
+                            ? 'Mesaj sabitlendi'
+                            : 'Sadece kanal yöneticisi mesaj sabitleyebilir'),
+                      ),
+                    );
+                  }
                 },
               ),
           ],
@@ -330,6 +393,22 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
             context.read<ChannelMembersCubit>().clearActionMessage();
           },
         ),
+        // DM kanallarında hedef kullanıcıyı MessageCubit'e bildir
+        if (widget.channel.type == ChannelType.dm)
+          BlocListener<ChannelMembersCubit, ChannelMembersState>(
+            listenWhen: (prev, curr) =>
+                curr.status == ChannelMembersStatus.success &&
+                prev.status != ChannelMembersStatus.success,
+            listener: (ctx, state) {
+              final myId = AppSession.instance.userId ?? '';
+              final other = state.members
+                  .where((m) => m.id != myId)
+                  .firstOrNull;
+              if (other != null) {
+                ctx.read<MessageCubit>().setDmTargetUserId(other.id);
+              }
+            },
+          ),
       ],
       child: Column(
         children: [
@@ -337,6 +416,7 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
             child: _ChatArea(
               scrollController: _scrollController,
               onLongPress: (msg) => _showMessageMenu(context, msg),
+              searchQuery: _searchQuery,
             ),
           ),
           _TypingIndicator(),
@@ -347,6 +427,12 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
     final inputArea = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // @mention önerileri
+        if (_mentionQuery != null)
+          _MentionSuggestions(
+            query: _mentionQuery!,
+            onSelect: _insertMention,
+          ),
         if (_editingMessageId != null)
           _EditingBanner(
             content: _editingOriginalContent,
@@ -377,32 +463,105 @@ class _ChannelViewBodyState extends State<_ChannelViewBody> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.channel.type == ChannelType.dm
-              ? widget.channel.name
-              : '# ${widget.channel.name}',
-        ),
-        titleSpacing: 0,
-        leading: widget.onMenuTap != null
-            ? IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: widget.onMenuTap,
-              )
-            : null,
-        actions: [
-          Builder(
-            builder: (ctx) => IconButton(
-              icon: const Icon(Icons.group_outlined),
-              tooltip: 'Üyeler',
-              onPressed: () => Scaffold.of(ctx).openEndDrawer(),
+      appBar: _searchMode
+          ? AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _searchMode = false;
+                    _searchQuery = '';
+                    _searchController.clear();
+                  });
+                },
+              ),
+              titleSpacing: 0,
+              title: TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Mesajlarda ara...',
+                  border: InputBorder.none,
+                ),
+                onChanged: (v) => setState(() => _searchQuery = v.trim()),
+              ),
+            )
+          : AppBar(
+              title: Text(
+                widget.channel.type == ChannelType.dm
+                    ? widget.channel.name
+                    : '# ${widget.channel.name}',
+              ),
+              titleSpacing: 0,
+              leading: widget.onMenuTap != null
+                  ? IconButton(
+                      icon: const Icon(Icons.menu),
+                      onPressed: widget.onMenuTap,
+                    )
+                  : null,
+              actions: [
+                // 🔍 Arama
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: 'Mesajlarda Ara',
+                  onPressed: () => setState(() => _searchMode = true),
+                ),
+                // 📌 Sabitlenmiş mesajlar
+                Builder(
+                  builder: (ctx) => IconButton(
+                    icon: const Icon(Icons.push_pin_outlined),
+                    tooltip: 'Sabitlenmiş Mesajlar',
+                    onPressed: () {
+                      setState(() => _pinnedDrawerOpen = true);
+                      ctx.read<MessageCubit>().fetchPinnedMessages();
+                      Scaffold.of(ctx).openEndDrawer();
+                    },
+                  ),
+                ),
+                // 👥 Üyeler
+                Builder(
+                  builder: (ctx) => IconButton(
+                    icon: const Icon(Icons.group_outlined),
+                    tooltip: 'Üyeler',
+                    onPressed: () {
+                      setState(() => _pinnedDrawerOpen = false);
+                      Scaffold.of(ctx).openEndDrawer();
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
-      endDrawer: _MembersDrawer(channel: widget.channel),
+      endDrawer: _buildEndDrawer(),
       body: listeners,
       bottomNavigationBar: inputArea,
+    );
+  }
+
+  Widget _buildEndDrawer() {
+    // Hangi drawer'ın açılacağını son basılan butona göre belirlemek için
+    // basit bir yaklaşım: her iki drawer'ı tek Drawer içinde tab ile sarmak
+    // yerine, iki ayrı endDrawer context geçişiyle açılmaz; bu yüzden
+    // state ile seçimi takip ediyoruz.
+    return _pinnedDrawerOpen
+        ? _PinnedMessagesDrawer(
+            channel: widget.channel,
+            onScrollTo: _scrollToMessage,
+          )
+        : _MembersDrawer(channel: widget.channel);
+  }
+
+  bool _pinnedDrawerOpen = false;
+
+  void _scrollToMessage(String messageId) {
+    final messages = context.read<MessageCubit>().state.messages;
+    final idx = messages.indexWhere((m) => m.id == messageId);
+    if (idx < 0 || !_scrollController.hasClients) return;
+    // Tahmini yükseklik: 72dp/öğe
+    final estimated = idx * 72.0;
+    _scrollController.animateTo(
+      estimated.clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.easeOut,
     );
   }
 }
@@ -454,10 +613,12 @@ class _EmbeddedHeader extends StatelessWidget {
 class _ChatArea extends StatelessWidget {
   final ScrollController scrollController;
   final void Function(MessageModel) onLongPress;
+  final String searchQuery;
 
   const _ChatArea({
     required this.scrollController,
     required this.onLongPress,
+    this.searchQuery = '',
   });
 
   @override
@@ -513,15 +674,40 @@ class _ChatArea extends StatelessWidget {
           );
         }
 
+        final q = searchQuery.toLowerCase();
+        final displayMessages = q.isEmpty
+            ? state.messages
+            : state.messages
+                .where((m) => m.content.toLowerCase().contains(q))
+                .toList();
+
+        if (q.isNotEmpty && displayMessages.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.search_off,
+                    size: 56,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                const SizedBox(height: 12),
+                Text('"$searchQuery" için sonuç bulunamadı',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color:
+                            Theme.of(context).colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          );
+        }
+
         return Stack(
           children: [
             ListView.builder(
               controller: scrollController,
               padding: const EdgeInsets.symmetric(vertical: 12),
-              itemCount: state.messages.length,
+              itemCount: displayMessages.length,
               itemBuilder: (context, i) {
-                final msg = state.messages[i];
-                final prev = i > 0 ? state.messages[i - 1] : null;
+                final msg = displayMessages[i];
+                final prev = i > 0 ? displayMessages[i - 1] : null;
                 final showSender = !msg.isMe && msg.senderId != prev?.senderId;
                 final replyMsg = msg.replyToMessageId != null
                     ? state.messages
@@ -533,6 +719,7 @@ class _ChatArea extends StatelessWidget {
                   showSender: showSender,
                   replyMessage: replyMsg,
                   onLongPress: () => onLongPress(msg),
+                  searchQuery: q,
                 );
               },
             ),
@@ -563,12 +750,14 @@ class _MessageBubble extends StatelessWidget {
   final MessageModel? replyMessage;
   final bool showSender;
   final VoidCallback onLongPress;
+  final String searchQuery;
 
   const _MessageBubble({
     required this.message,
     required this.showSender,
     required this.onLongPress,
     this.replyMessage,
+    this.searchQuery = '',
   });
 
   String _formatTime(DateTime dt) {
@@ -708,8 +897,11 @@ class _MessageBubble extends StatelessWidget {
                                 isMe: isMe,
                                 textColor: textColor,
                               )
-                            : Text(message.content,
-                                style: TextStyle(color: textColor)),
+                            : _HighlightedText(
+                                text: message.content,
+                                query: searchQuery,
+                                style: TextStyle(color: textColor),
+                              ),
                     const SizedBox(height: 2),
                     Row(
                       mainAxisSize: MainAxisSize.min,
@@ -1815,6 +2007,255 @@ class _AddMemberSheetState extends State<_AddMemberSheet> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── Highlighted text (search) ───────────────────────────────────────────────
+
+class _HighlightedText extends StatelessWidget {
+  final String text;
+  final String query;
+  final TextStyle? style;
+
+  const _HighlightedText({required this.text, this.query = '', this.style});
+
+  @override
+  Widget build(BuildContext context) {
+    if (query.isEmpty) return Text(text, style: style);
+    final lower = text.toLowerCase();
+    final q = query.toLowerCase();
+    final spans = <TextSpan>[];
+    int start = 0;
+    int idx = lower.indexOf(q);
+    while (idx != -1) {
+      if (idx > start) {
+        spans.add(TextSpan(text: text.substring(start, idx), style: style));
+      }
+      spans.add(TextSpan(
+        text: text.substring(idx, idx + q.length),
+        style: (style ?? const TextStyle()).copyWith(
+          backgroundColor: Colors.yellow.shade600,
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+        ),
+      ));
+      start = idx + q.length;
+      idx = lower.indexOf(q, start);
+    }
+    if (start < text.length) {
+      spans.add(TextSpan(text: text.substring(start), style: style));
+    }
+    return Text.rich(TextSpan(children: spans));
+  }
+}
+
+// ─── Pinned messages drawer ───────────────────────────────────────────────────
+
+class _PinnedMessagesDrawer extends StatelessWidget {
+  final ChannelModel channel;
+  final void Function(String messageId) onScrollTo;
+
+  const _PinnedMessagesDrawer({
+    required this.channel,
+    required this.onScrollTo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Drawer(
+      shape: const RoundedRectangleBorder(),
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(Icons.push_pin, color: Colors.orange, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Sabitlenmiş Mesajlar',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: BlocBuilder<MessageCubit, MessageState>(
+                builder: (context, state) {
+                  if (state.loadingPinned) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (state.pinnedMessages.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.push_pin_outlined,
+                            size: 48,
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Henüz sabitlenmiş mesaj yok',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
+                                ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 8, horizontal: 8),
+                    itemCount: state.pinnedMessages.length,
+                    separatorBuilder: (_, __) =>
+                        const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final pin = state.pinnedMessages[i];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                            vertical: 4, horizontal: 0),
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.push_pin,
+                            color: Colors.orange,
+                          ),
+                          title: Text(
+                            pin.content,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            '${pin.senderName} • Sabitleyen: ${pin.pinnedByName}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          trailing: Text(
+                            pin.formattedTime,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            onScrollTo(pin.messageId);
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Mention suggestions ──────────────────────────────────────────────────────
+
+class _MentionSuggestions extends StatelessWidget {
+  final String query;
+  final void Function(String fullName) onSelect;
+
+  const _MentionSuggestions({required this.query, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ChannelMembersCubit, ChannelMembersState>(
+      builder: (context, state) {
+        final myId = AppSession.instance.userId;
+        final matches = state.members
+            .where((m) =>
+                m.id != myId &&
+                m.fullName.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+
+        if (matches.isEmpty) return const SizedBox.shrink();
+
+        return Container(
+          constraints: const BoxConstraints(maxHeight: 200),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              top: BorderSide(color: Theme.of(context).dividerColor, width: 0.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(20),
+                blurRadius: 8,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: matches.length,
+            itemBuilder: (context, i) {
+              final member = matches[i];
+              return ListTile(
+                dense: true,
+                leading: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: ConstColor.primary.withAlpha(30),
+                  child: Text(
+                    member.fullName.isNotEmpty
+                        ? member.fullName[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: ConstColor.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                title: Text(
+                  member.fullName,
+                  style: const TextStyle(fontSize: 14),
+                ),
+                subtitle: Text(
+                  member.isAdmin ? 'Yönetici' : 'Üye',
+                  style: const TextStyle(fontSize: 11),
+                ),
+                trailing: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: member.isOnline ? Colors.green : Colors.grey,
+                  ),
+                ),
+                onTap: () => onSelect(member.fullName),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

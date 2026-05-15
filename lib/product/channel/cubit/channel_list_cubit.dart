@@ -33,8 +33,16 @@ class ChannelListCubit extends Cubit<ChannelListState> {
       if (pref == 'MUTED') return;
       if (pref == 'MENTIONS_ONLY') {
         final myId = AppSession.instance.userId ?? '';
+        final myName = AppSession.instance.fullName ?? '';
         final content = data['content'] as String? ?? '';
-        if (myId.isEmpty || !content.contains(myId)) return;
+        // mentions[] array (sunucu gönderiyorsa) veya @fullName içerik kontrolü
+        final mentions = data['mentions'];
+        final mentionedById = mentions is List && mentions.isNotEmpty
+            ? mentions.any((m) => m?.toString() == myId)
+            : false;
+        final mentionedByName = myName.isNotEmpty &&
+            content.toLowerCase().contains('@${myName.toLowerCase()}');
+        if (!mentionedById && !mentionedByName) return;
       }
 
       final counts = Map<String, int>.from(state.unreadCounts);

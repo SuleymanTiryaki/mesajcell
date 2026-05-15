@@ -252,6 +252,29 @@ class ChannelService extends IChannelService {
   }
 
   @override
+  Future<List<PinnedMessage>> getPinnedMessages(String channelId) async {
+    try {
+      final response =
+          await dio.get(IChannelService.pinnedMessagesPath(channelId));
+      final raw = _toMap(response.data)['data'];
+      if (raw is List) {
+        return raw
+            .whereType<Map>()
+            .map((e) => PinnedMessage.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
+      }
+      return [];
+    } on DioException catch (e) {
+      BaseDioService.service.handleDioError(e);
+      return [];
+    } catch (e, st) {
+      AppLogger.e('[ChannelService] getPinnedMessages hatası',
+          error: e, stackTrace: st);
+      return [];
+    }
+  }
+
+  @override
   Future<bool> updateNotificationPreference(
       String channelId, String preference) async {
     try {

@@ -9,6 +9,7 @@ class NotificationModel {
   final String? referenceId;
   final bool isRead;
   final DateTime createdAt;
+  final String? senderName;
 
   const NotificationModel({
     required this.id,
@@ -17,16 +18,17 @@ class NotificationModel {
     this.referenceId,
     required this.isRead,
     required this.createdAt,
+    this.senderName,
   });
 
   String get displayText {
     switch (type) {
       case 'MENTION':
-        return 'Seni etiketledi';
+        return senderName != null ? '$senderName seni etiketledi' : 'Seni etiketledi';
       case 'CHANNEL_INVITE':
-        return 'Bir kanala eklendiniz';
+        return senderName != null ? '$senderName bir kanala ekledi' : 'Bir kanala eklendiniz';
       case 'MESSAGE':
-        return 'Yeni mesaj var';
+        return senderName != null ? '$senderName: Yeni mesaj' : 'Yeni mesaj var';
       default:
         return 'Yeni bildirim';
     }
@@ -55,6 +57,7 @@ class NotificationModel {
         createdAt:
             DateTime.tryParse(json['created_at']?.toString() ?? '') ??
                 DateTime.now(),
+        senderName: json['sender_name']?.toString(),
       );
 
   static bool _parseBool(dynamic v) {

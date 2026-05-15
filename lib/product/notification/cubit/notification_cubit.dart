@@ -22,13 +22,47 @@ class NotificationCubit extends Cubit<NotificationState> {
   void _listenSocket() {
     _socketSub = SocketService.instance.onMessageNew.listen((data) {
       final myId = AppSession.instance.userId ?? '';
+      final myName = AppSession.instance.fullName ?? '';
       if (myId.isEmpty) return;
+
       final content = data['content'] as String? ?? '';
-      if (content.contains(myId)) {
-        // Mention geldi — unread badge artır
+      final senderName = data['sender_name'] as String? ?? 'Biri';
+
+      // Kendi mesajımızı sayma
+      final senderId = data['sender_id']?.toString() ?? '';
+      if (senderId == myId) return;
+
+      // mentions[] array (sunucudan gelebilir) veya @fullName içerik kontrolü
+      final mentions = data['mentions'];
+      final mentionedById = mentions is List
+          ? mentions.any((m) => m?.toString() == myId)
+          : false;
+      final mentionedByName = myName.isNotEmpty &&
+          content.toLowerCase().contains('@${myName.toLowerCase()}');
+
+      if (mentionedById || mentionedByName) {
+        // Listeye yerel bildirim ekle (API çağrısına gerek kalmadan panelde görünsün)
+        final localNotif = NotificationModel(
+          id: 'local_${DateTime.now().millisecondsSinceEpoch}',
+          userId: myId,
+          type: 'MENTION',
+          referenceId: data['channel_id']?.toString(),
+          isRead: false,
+          createdAt: DateTime.now(),
+          senderName: senderName,
+        );
         emit(state.copyWith(
-            unreadCount: state.unreadCount + 1,
-            pendingMention: data['sender_name'] as String? ?? 'Biri'));
+          notifications: [localNotif, ...state.notifications],
+          unreadCount: state.unreadCount + 1,
+          pendingMention: senderName,
+        ));
+        // Backend'e de bildirim yaz (backend'e güvenme, explicit çağır)
+        final messageId = data['id']?.toString();
+        _service.createNotification(
+          userId: myId,
+          type: 'MENTION',
+          referenceId: messageId,
+        );
       }
     });
   }

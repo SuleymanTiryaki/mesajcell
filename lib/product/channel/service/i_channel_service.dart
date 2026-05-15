@@ -29,6 +29,9 @@ abstract class IChannelService {
   static String pinPath(String channelId, String messageId) =>
       '/api/v1/channels/$channelId/pin/$messageId';
 
+  static String pinnedMessagesPath(String channelId) =>
+      '/api/v1/channels/$channelId/pinned';
+
   static String notificationPreferencePath(String channelId) =>
       '/api/v1/channels/$channelId/notification-preference';
 
@@ -45,5 +48,6 @@ abstract class IChannelService {
   Future<bool> deleteMessage(String messageId);
   Future<bool> addReaction(String messageId, String emoji, String channelId);
   Future<bool> pinMessage(String channelId, String messageId);
+  Future<List<PinnedMessage>> getPinnedMessages(String channelId);
   Future<bool> updateNotificationPreference(String channelId, String preference);
 }

@@ -46,12 +46,14 @@ class HomeService {
 
   Future<bool> updateMe({
     String? fullName,
+    String? email,
     String? profilePhotoUrl,
     String? presenceStatus,
   }) async {
     try {
       final body = <String, dynamic>{};
       if (fullName != null) body['full_name'] = fullName;
+      if (email != null) body['email'] = email;
       if (profilePhotoUrl != null) body['profile_photo_url'] = profilePhotoUrl;
       if (presenceStatus != null) body['presence_status'] = presenceStatus;
       final res = await _dio.patch(_mePath, data: body);

@@ -205,3 +205,44 @@ class SendMessageResponse {
   }
 }
 
+// ─── Pinned message ───────────────────────────────────────────────────────────
+
+class PinnedMessage {
+  final String id;
+  final String channelId;
+  final String messageId;
+  final String pinnedBy;
+  final String pinnedByName;
+  final String content;
+  final String senderName;
+  final DateTime createdAt;
+
+  const PinnedMessage({
+    required this.id,
+    required this.channelId,
+    required this.messageId,
+    required this.pinnedBy,
+    required this.pinnedByName,
+    required this.content,
+    required this.senderName,
+    required this.createdAt,
+  });
+
+  factory PinnedMessage.fromJson(Map<String, dynamic> json) => PinnedMessage(
+        id: json['id']?.toString() ?? '',
+        channelId: json['channel_id']?.toString() ?? '',
+        messageId: json['message_id']?.toString() ?? '',
+        pinnedBy: json['pinned_by']?.toString() ?? '',
+        pinnedByName: json['pinned_by_name']?.toString() ?? '',
+        content: json['content']?.toString() ?? '',
+        senderName: json['sender_name']?.toString() ?? '',
+        createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
+            DateTime.now(),
+      );
+
+  String get formattedTime {
+    final l = createdAt.toLocal();
+    return '${l.hour.toString().padLeft(2, '0')}:${l.minute.toString().padLeft(2, '0')}';
+  }
+}
+

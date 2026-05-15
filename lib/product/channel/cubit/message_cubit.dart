@@ -5,12 +5,20 @@ import '../../../features/core/app_logger.dart';
 import '../../../features/core/socket_service.dart';
 import '../model/channel_message_model.dart';
 import '../service/channel_service.dart';
+import '../../notification/service/notification_service.dart';
 
 part 'message_state.dart';
 
 class MessageCubit extends Cubit<MessageState> {
   final String channelId;
   final ChannelService _service;
+  final NotificationService _notifService;
+
+  String? _dmTargetUserId;
+
+  /// DM kanalında hedef kullanıcıyı ayarlar.
+  /// [ChannelView] içinde üyeler yüklendiğinde çağrılır.
+  void setDmTargetUserId(String id) => _dmTargetUserId = id;
 
   StreamSubscription<Map<String, dynamic>>? _newSub;
   StreamSubscription<Map<String, dynamic>>? _editSub;
@@ -18,6 +26,7 @@ class MessageCubit extends Cubit<MessageState> {
 
   MessageCubit({required this.channelId})
       : _service = ChannelService(AppDio.create()),
+        _notifService = NotificationService(AppDio.create()),
         super(const MessageState()) {
     _subscribeToSocket();
   }
@@ -108,12 +117,28 @@ class MessageCubit extends Cubit<MessageState> {
     final trimmed = content.trim();
     if (SocketService.instance.isConnected) {
       SocketService.instance.sendMessage(channelId, trimmed, replyToMessageId: replyToMessageId);
+      // DM kanalında karşı tarafa bildirim gönder
+      if (_dmTargetUserId != null) {
+        _notifService.createNotification(
+          userId: _dmTargetUserId!,
+          type: 'MESSAGE',
+          referenceId: channelId,
+        );
+      }
     } else {
       emit(state.copyWith(sending: true));
       try {
         final response = await _service.sendMessage(channelId, trimmed);
         if (response?.success == true && response?.message != null) {
           final msg = response!.message!;
+          // DM kanalında karşı tarafa bildirim gönder
+          if (_dmTargetUserId != null) {
+            _notifService.createNotification(
+              userId: _dmTargetUserId!,
+              type: 'MESSAGE',
+              referenceId: msg.id,
+            );
+          }
           if (!state.messages.any((m) => m.id == msg.id)) {
             emit(state.copyWith(messages: [...state.messages, msg], sending: false));
           } else {
@@ -198,12 +223,20 @@ class MessageCubit extends Cubit<MessageState> {
 
   // ─── Pin ──────────────────────────────────────────────────────────────────
 
-  Future<void> pinMessage(String msgId) async {
+  Future<bool> pinMessage(String msgId) async {
     final updated = state.messages
         .map((m) => m.id == msgId ? m.copyWith(isPinned: true) : m)
         .toList();
     if (!isClosed) emit(state.copyWith(messages: updated));
-    await _service.pinMessage(channelId, msgId);
+    final ok = await _service.pinMessage(channelId, msgId);
+    if (ok) await fetchPinnedMessages();
+    return ok;
+  }
+
+  Future<void> fetchPinnedMessages() async {
+    if (!isClosed) emit(state.copyWith(loadingPinned: true));
+    final pinned = await _service.getPinnedMessages(channelId);
+    if (!isClosed) emit(state.copyWith(pinnedMessages: pinned, loadingPinned: false));
   }
 
   @override

@@ -4,6 +4,9 @@ class MeModel {
   final String presenceStatus;
   final String? profilePhotoUrl;
   final String role;
+  final String? email;
+  final String? gsmNumber;
+  final String? orgId;
 
   const MeModel({
     required this.id,
@@ -11,6 +14,9 @@ class MeModel {
     required this.presenceStatus,
     this.profilePhotoUrl,
     required this.role,
+    this.email,
+    this.gsmNumber,
+    this.orgId,
   });
 
   bool get isOrgAdmin => role == 'ORG_ADMIN';
@@ -19,6 +25,8 @@ class MeModel {
     String? fullName,
     String? presenceStatus,
     String? profilePhotoUrl,
+    String? email,
+    String? gsmNumber,
   }) =>
       MeModel(
         id: id,
@@ -26,6 +34,9 @@ class MeModel {
         presenceStatus: presenceStatus ?? this.presenceStatus,
         profilePhotoUrl: profilePhotoUrl ?? this.profilePhotoUrl,
         role: role,
+        email: email ?? this.email,
+        gsmNumber: gsmNumber ?? this.gsmNumber,
+        orgId: orgId,
       );
 
   factory MeModel.fromJson(Map<String, dynamic> json) => MeModel(
@@ -34,5 +45,8 @@ class MeModel {
         presenceStatus: json['presence_status']?.toString() ?? 'OFFLINE',
         profilePhotoUrl: json['profile_photo_url']?.toString(),
         role: json['role']?.toString() ?? 'MEMBER',
+        email: json['email']?.toString(),
+        gsmNumber: json['gsm_number']?.toString(),
+        orgId: json['org_id']?.toString(),
       );
 }

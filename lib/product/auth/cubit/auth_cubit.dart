@@ -67,6 +67,9 @@ class AuthCubit extends Cubit<AuthState> {
           await AppSession.instance.setTokens(
             accessToken: response.accessToken!,
             refreshToken: response.refreshToken,
+            userId: response.userId,
+            orgId: response.orgId,
+            role: response.role,
           );
         }
         emit(state.copyWith(status: AuthStatus.loginSuccess));
@@ -86,7 +89,6 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  // ─── 2. Adım: OTP Doğrulama ────────────────────────────────────────────────
 
   Future<void> verifyOtp() async {
     final otp = otpController.text.trim();
@@ -113,6 +115,10 @@ class AuthCubit extends Cubit<AuthState> {
           await AppSession.instance.setTokens(
             accessToken: response.accessToken!,
             refreshToken: response.refreshToken,
+            userId: response.user?.id,
+            fullName: response.user?.fullName,
+            orgId: response.user?.orgId,
+            role: response.user?.role,
           );
         }
         emit(state.copyWith(status: AuthStatus.otpVerified));

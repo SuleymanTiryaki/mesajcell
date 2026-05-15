@@ -14,12 +14,14 @@ final class AppSession {
   String? _accessToken;
   String? _refreshToken;
   String? _userId;
+  String? _fullName;
   String? _orgId;
   String? _role;
 
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
   String? get userId => _userId;
+  String? get fullName => _fullName;
   String? get orgId => _orgId;
   String? get role => _role;
 
@@ -30,6 +32,7 @@ final class AppSession {
   static const _kAccess  = 'access_token';
   static const _kRefresh = 'refresh_token';
   static const _kUserId  = 'user_id';
+  static const _kFullName = 'full_name';
   static const _kOrgId   = 'org_id';
   static const _kRole    = 'role';
 
@@ -39,6 +42,7 @@ final class AppSession {
     _accessToken  = prefs.getString(_kAccess);
     _refreshToken = prefs.getString(_kRefresh);
     _userId       = prefs.getString(_kUserId);
+    _fullName     = prefs.getString(_kFullName);
     _orgId        = prefs.getString(_kOrgId);
     _role         = prefs.getString(_kRole);
   }
@@ -48,21 +52,24 @@ final class AppSession {
     required String accessToken,
     String? refreshToken,
     String? userId,
+    String? fullName,
     String? orgId,
     String? role,
   }) async {
     _accessToken  = accessToken;
     _refreshToken = refreshToken ?? _refreshToken;
     _userId       = userId       ?? _parseSubFromJwt(accessToken);
+    _fullName     = fullName     ?? _fullName;
     _orgId        = orgId        ?? _orgId;
     _role         = role         ?? _role;
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kAccess, _accessToken!);
     if (_refreshToken != null) await prefs.setString(_kRefresh, _refreshToken!);
-    if (_userId  != null) await prefs.setString(_kUserId, _userId!);
-    if (_orgId   != null) await prefs.setString(_kOrgId,  _orgId!);
-    if (_role    != null) await prefs.setString(_kRole,   _role!);
+    if (_userId   != null) await prefs.setString(_kUserId,   _userId!);
+    if (_fullName != null) await prefs.setString(_kFullName, _fullName!);
+    if (_orgId    != null) await prefs.setString(_kOrgId,    _orgId!);
+    if (_role     != null) await prefs.setString(_kRole,     _role!);
   }
 
   // ─── Temizle ──────────────────────────────────────────────────────────────
@@ -70,6 +77,7 @@ final class AppSession {
     _accessToken  = null;
     _refreshToken = null;
     _userId       = null;
+    _fullName     = null;
     _orgId        = null;
     _role         = null;
 
@@ -77,6 +85,7 @@ final class AppSession {
     await prefs.remove(_kAccess);
     await prefs.remove(_kRefresh);
     await prefs.remove(_kUserId);
+    await prefs.remove(_kFullName);
     await prefs.remove(_kOrgId);
     await prefs.remove(_kRole);
   }

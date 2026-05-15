@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../features/core/socket_service.dart';
 import '../channel/view/public_channels_view.dart';
 import '../home/view/home_view.dart';
+import '../people/view/people_view.dart';
 import '../settings/view/settings_view.dart';
 
 class MainShell extends StatefulWidget {
@@ -29,7 +30,7 @@ class _MainShellState extends State<MainShell> {
   static const _pages = [
     HomeView(),
     PublicChannelsView(),
-    _PlaceholderView('Güncellemeler'),
+    PeopleView(),
     SettingsView(),
   ];
 
@@ -56,9 +57,9 @@ class _MainShellState extends State<MainShell> {
             label: 'Açık Kanallar',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.circle_notifications_outlined),
-            activeIcon: Icon(Icons.circle_notifications),
-            label: 'Güncellemeler',
+            icon: Icon(Icons.people_outline),
+            activeIcon: Icon(Icons.people),
+            label: 'Kişiler',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
@@ -66,24 +67,6 @@ class _MainShellState extends State<MainShell> {
             label: 'Siz',
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PlaceholderView extends StatelessWidget {
-  final String label;
-  const _PlaceholderView(this.label);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(label)),
-      body: Center(
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
       ),
     );
   }
