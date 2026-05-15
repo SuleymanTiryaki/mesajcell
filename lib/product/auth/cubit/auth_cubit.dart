@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../features/core/app_logger.dart';
-import '../../../features/core/app_session.dart';
+import '../../../core/app_logger.dart';
+import '../../../core/app_session.dart';
 import '../model/login_model.dart';
 import '../model/otp_model.dart';
 import '../service/IAuth_service.dart'; // ignore: file_names
@@ -32,17 +32,22 @@ class AuthCubit extends Cubit<AuthState> {
     final password = passwordController.text.trim();
 
     if (phone.isEmpty || phone.length < 10) {
-      emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: 'Geçerli bir telefon numarası girin.',
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.error,
+          errorMessage: 'Geçerli bir telefon numarası girin.',
+        ),
+      );
       return;
     }
+
     if (password.isEmpty || password.length < 6) {
-      emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: 'Şifre en az 6 karakter olmalıdır.',
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.error,
+          errorMessage: 'Şifre en az 6 karakter olmalıdır.',
+        ),
+      );
       return;
     }
 
@@ -54,10 +59,12 @@ class AuthCubit extends Cubit<AuthState> {
       );
 
       if (response == null) {
-        emit(state.copyWith(
-          status: AuthStatus.error,
-          errorMessage: 'Sunucuya bağlanılamadı.',
-        ));
+        emit(
+          state.copyWith(
+            status: AuthStatus.error,
+            errorMessage: 'Sunucuya bağlanılamadı.',
+          ),
+        );
         return;
       }
 
@@ -75,30 +82,32 @@ class AuthCubit extends Cubit<AuthState> {
         emit(state.copyWith(status: AuthStatus.loginSuccess));
       } else {
         AppLogger.w('[AuthCubit] login başarısız: ${response.message}');
-        emit(state.copyWith(
-          status: AuthStatus.error,
-          errorMessage: response.message ?? 'Giriş başarısız.',
-        ));
+        emit(
+          state.copyWith(
+            status: AuthStatus.error,
+            errorMessage: response.message ?? 'Giriş başarısız.',
+          ),
+        );
       }
     } catch (e, st) {
       AppLogger.e('[AuthCubit] login hata', error: e, stackTrace: st);
-      emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(status: AuthStatus.error, errorMessage: e.toString()),
+      );
     }
   }
-
 
   Future<void> verifyOtp() async {
     final otp = otpController.text.trim();
     final phone = state.phoneNumber ?? phoneController.text.trim();
 
     if (otp.isEmpty || otp.length < 4) {
-      emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: 'Lütfen doğrulama kodunu girin.',
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.error,
+          errorMessage: 'Lütfen doğrulama kodunu girin.',
+        ),
+      );
       return;
     }
 
@@ -124,17 +133,18 @@ class AuthCubit extends Cubit<AuthState> {
         emit(state.copyWith(status: AuthStatus.otpVerified));
       } else {
         AppLogger.w('[AuthCubit] OTP hatalı: ${response?.message}');
-        emit(state.copyWith(
-          status: AuthStatus.error,
-          errorMessage: response?.message ?? 'Kod hatalı veya süresi dolmuş.',
-        ));
+        emit(
+          state.copyWith(
+            status: AuthStatus.error,
+            errorMessage: response?.message ?? 'Kod hatalı veya süresi dolmuş.',
+          ),
+        );
       }
     } catch (e, st) {
       AppLogger.e('[AuthCubit] verifyOtp hata', error: e, stackTrace: st);
-      emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(status: AuthStatus.error, errorMessage: e.toString()),
+      );
     }
   }
 
@@ -146,17 +156,18 @@ class AuthCubit extends Cubit<AuthState> {
 
     try {
       final success = await service.postResendOtp(phone);
-      emit(state.copyWith(
-        status: success ? AuthStatus.otpResent : AuthStatus.error,
-        errorMessage: success ? null : 'Kod gönderilemedi, tekrar deneyin.',
-      ));
+      emit(
+        state.copyWith(
+          status: success ? AuthStatus.otpResent : AuthStatus.error,
+          errorMessage: success ? null : 'Kod gönderilemedi, tekrar deneyin.',
+        ),
+      );
       if (success) AppLogger.i('[AuthCubit] OTP yeniden gönderildi');
     } catch (e, st) {
       AppLogger.e('[AuthCubit] resendOtp hata', error: e, stackTrace: st);
-      emit(state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(status: AuthStatus.error, errorMessage: e.toString()),
+      );
     }
   }
 
@@ -164,11 +175,13 @@ class AuthCubit extends Cubit<AuthState> {
 
   void backToPhone() {
     otpController.clear();
-    emit(state.copyWith(
-      step: AuthStep.phone,
-      status: AuthStatus.initial,
-      errorMessage: null,
-    ));
+    emit(
+      state.copyWith(
+        step: AuthStep.phone,
+        status: AuthStatus.initial,
+        errorMessage: null,
+      ),
+    );
   }
 
   /// Hata mesajını sıfırla (snackbar sonrası kullanım için)
