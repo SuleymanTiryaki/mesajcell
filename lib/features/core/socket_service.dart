@@ -75,8 +75,48 @@ class SocketService {
 
   // ─── Gönderilen eventler ─────────────────────────────────────────────────
 
-  void sendMessage(String channelId, String content) =>
-      _emit('message:send', {'channel_id': channelId, 'content': content});
+  void sendMessage(String channelId, String content, {String? replyToMessageId}) =>
+      _emit('message:send', {
+        'channel_id': channelId,
+        'content': content,
+        'message_type': 'TEXT',
+        if (replyToMessageId != null) 'reply_to_message_id': replyToMessageId,
+      });
+
+  void editMessage(String messageId, String channelId, String content) =>
+      _emit('message:edit', {
+        'id': messageId,
+        'channel_id': channelId,
+        'content': content,
+      });
+
+  void deleteMessage(String messageId, String channelId) =>
+      _emit('message:delete', {
+        'id': messageId,
+        'channel_id': channelId,
+      });
+
+  void sendFileMessage({
+    required String channelId,
+    required String fileName,
+    required int fileSize,
+    required String mimeType,
+    String? fileUrl,
+  }) {
+    final messageType = mimeType.startsWith('image') ? 'IMAGE' : 'FILE';
+    _emit('message:send', {
+      'channel_id': channelId,
+      'content': fileName,
+      'message_type': messageType,
+      'attachment': {
+        'file_name': fileName,
+        'file_size': fileSize,
+        'mime_type': mimeType,
+        if (fileUrl != null && fileUrl.isNotEmpty) 'file_url': fileUrl,
+        'thumbnail_url': null,
+      },
+    });
+  }
 
   void sendTyping(String channelId, {required bool isTyping}) =>
       _emit('user:typing', {'channel_id': channelId, 'is_typing': isTyping});
@@ -86,6 +126,9 @@ class SocketService {
 
   void sendReadReceipt(String channelId, String messageId) =>
       _emit('read:receipt', {'channel_id': channelId, 'message_id': messageId});
+
+  void joinChannel(String channelId) =>
+      _emit('channel:join', {'channel_id': channelId});
 
   // ─── Yardımcılar ─────────────────────────────────────────────────────────
 

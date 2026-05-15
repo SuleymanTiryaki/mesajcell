@@ -52,9 +52,9 @@ class OrgUserModel {
   bool get isOnline => presenceStatus == 'ONLINE';
 
   factory OrgUserModel.fromJson(Map<String, dynamic> json) => OrgUserModel(
-        id: json['id'] as String? ?? '',
-        fullName: json['full_name'] as String? ?? '',
-        presenceStatus: json['presence_status'] as String? ?? 'OFFLINE',
+        id: json['id']?.toString() ?? '',
+        fullName: json['full_name']?.toString() ?? '',
+        presenceStatus: json['presence_status']?.toString() ?? 'OFFLINE',
       );
 }
 
@@ -68,11 +68,13 @@ class ChannelMembersResponse {
   });
 
   factory ChannelMembersResponse.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] as List<dynamic>? ?? [];
+    final raw = json['data'];
+    final data = raw is List ? raw : <dynamic>[];
     return ChannelMembersResponse(
       success: json['success'] as bool? ?? false,
       members: data
-          .map((e) => ChannelMemberModel.fromJson(e as Map<String, dynamic>))
+          .whereType<Map>()
+          .map((e) => ChannelMemberModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
     );
   }
@@ -88,11 +90,13 @@ class OrgUsersResponse {
   });
 
   factory OrgUsersResponse.fromJson(Map<String, dynamic> json) {
-    final data = json['data'] as List<dynamic>? ?? [];
+    final raw = json['data'];
+    final data = raw is List ? raw : <dynamic>[];
     return OrgUsersResponse(
       success: json['success'] as bool? ?? false,
       users: data
-          .map((e) => OrgUserModel.fromJson(e as Map<String, dynamic>))
+          .whereType<Map>()
+          .map((e) => OrgUserModel.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
     );
   }

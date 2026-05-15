@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../features/core/app_dio.dart';
 import '../../../features/utility/const/constant_color.dart';
 import '../../auth/service/auth_service.dart';
-import '../../auth/view/otp_verify_view.dart';
 import '../cubit/register_admin_cubit.dart';
 
 class RegisterAdminView extends StatelessWidget {
@@ -40,11 +40,7 @@ class _RegisterAdminBodyState extends State<_RegisterAdminBody> {
       listener: (context, state) {
         if (state.status == RegisterAdminStatus.success) {
           final gsm = context.read<RegisterAdminCubit>().gsmController.text.trim();
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => OtpVerifyView(gsmNumber: gsm),
-            ),
-          );
+          context.go('/otp?gsm=${Uri.encodeComponent(gsm)}');
           return;
         }
 

@@ -64,7 +64,7 @@ class AuthCubit extends Cubit<AuthState> {
       if (response.success) {
         AppLogger.i('[AuthCubit] Login başarılı → ana sayfa');
         if (response.accessToken != null) {
-          AppSession.instance.setTokens(
+          await AppSession.instance.setTokens(
             accessToken: response.accessToken!,
             refreshToken: response.refreshToken,
           );
@@ -110,7 +110,7 @@ class AuthCubit extends Cubit<AuthState> {
       if (response?.success == true) {
         AppLogger.i('[AuthCubit] OTP doğrulandı → ana sayfaya yönlendir');
         if (response!.accessToken != null) {
-          AppSession.instance.setTokens(
+          await AppSession.instance.setTokens(
             accessToken: response.accessToken!,
             refreshToken: response.refreshToken,
           );
@@ -177,7 +177,7 @@ class AuthCubit extends Cubit<AuthState> {
     } catch (_) {
       // API hatası olsa bile session temizlensin
     }
-    AppSession.instance.clear();
+    await AppSession.instance.clear();
     AppLogger.i('[AuthCubit] Çıkış yapıldı');
     emit(state.copyWith(status: AuthStatus.loggedOut));
   }

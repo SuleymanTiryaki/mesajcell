@@ -5,12 +5,14 @@ import 'package:provider/provider.dart';
 import 'package:mesajcell/features/utility/const/constant_string.dart';
 import 'package:mesajcell/features/utility/notifier/theme_notifier.dart';
 import 'package:mesajcell/features/utility/theme/app_theme.dart';
-import 'package:mesajcell/product/auth/view/auth_view.dart';
+import 'package:mesajcell/features/core/app_session.dart';
+import 'package:mesajcell/router/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await dotenv.load(fileName: '.env');
+  await AppSession.instance.initFromStorage();
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
@@ -31,7 +33,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeNotifier = context.watch<ThemeNotifier>();
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'MesajCell',
       debugShowCheckedModeBanner: false,
       localizationsDelegates: context.localizationDelegates,
@@ -40,7 +42,7 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeNotifier.themeMode,
-      home: const AuthView(),
+      routerConfig: appRouter,
     );
   }
 }

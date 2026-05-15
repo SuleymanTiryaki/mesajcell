@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../features/core/app_dio.dart';
 import '../../../features/utility/const/constant_color.dart';
 import '../cubit/auth_cubit.dart';
 import '../service/auth_service.dart';
 import 'widget/otp_widget.dart';
 import 'widget/phone_password_widget.dart';
-import '../../shell/main_shell.dart';
-import '../../register/view/register_view.dart';
 
 class AuthView extends StatelessWidget {
   const AuthView({super.key});
@@ -33,10 +32,7 @@ class _AuthBody extends StatelessWidget {
       listener: (context, state) {
         if (state.status == AuthStatus.loginSuccess ||
             state.status == AuthStatus.otpVerified) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const MainShell()),
-            (_) => false,
-          );
+          context.go('/home');
           return;
         }
 
@@ -174,11 +170,7 @@ class _AuthBody extends StatelessWidget {
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           TextButton(
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const RegisterView(),
-                              ),
-                            ),
+                            onPressed: () => context.pop(),
                             child: Text(
                               'Kayıt Ol',
                               style: TextStyle(

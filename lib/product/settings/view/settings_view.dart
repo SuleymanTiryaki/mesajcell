@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:mesajcell/features/utility/const/constant_color.dart';
 import 'package:mesajcell/features/utility/notifier/theme_notifier.dart';
 import '../../auth/cubit/auth_cubit.dart';
 import '../../auth/service/auth_service.dart';
-import '../../auth/view/auth_view.dart';
 import '../../../features/core/app_dio.dart';
 
 class SettingsView extends StatelessWidget {
@@ -32,10 +32,7 @@ class _SettingsBody extends StatelessWidget {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state.status == AuthStatus.loggedOut) {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (_) => const AuthView()),
-            (_) => false,
-          );
+          context.go('/welcome');
         }
       },
       child: Scaffold(

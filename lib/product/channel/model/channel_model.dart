@@ -48,6 +48,7 @@ class ChannelModel {
   final String? orgId;
   final String? createdBy;
   final int memberCount;
+  final String notificationPreference; // 'ALL', 'MENTIONS_ONLY', 'MUTED'
 
   const ChannelModel({
     required this.id,
@@ -58,7 +59,23 @@ class ChannelModel {
     this.orgId,
     this.createdBy,
     this.memberCount = 0,
+    this.notificationPreference = 'ALL',
   });
+
+  bool get isMuted => notificationPreference == 'MUTED';
+
+  ChannelModel copyWith({String? notificationPreference}) => ChannelModel(
+        id: id,
+        name: name,
+        description: description,
+        type: type,
+        iconUrl: iconUrl,
+        orgId: orgId,
+        createdBy: createdBy,
+        memberCount: memberCount,
+        notificationPreference:
+            notificationPreference ?? this.notificationPreference,
+      );
 
   factory ChannelModel.fromJson(Map<String, dynamic> json) => ChannelModel(
         id: json['id'] as String,
@@ -69,6 +86,8 @@ class ChannelModel {
         orgId: json['org_id'] as String?,
         createdBy: json['created_by'] as String?,
         memberCount: json['member_count'] as int? ?? 0,
+        notificationPreference:
+            json['notification_preference'] as String? ?? 'ALL',
       );
 }
 

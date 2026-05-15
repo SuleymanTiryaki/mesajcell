@@ -20,6 +20,18 @@ abstract class IChannelService {
   static String messagesPath(String channelId) =>
       '/api/v1/channels/$channelId/messages';
 
+  static String editMessagePath(String messageId) =>
+      '/api/v1/messages/$messageId';
+
+  static String reactionPath(String messageId) =>
+      '/api/v1/messages/$messageId/reactions';
+
+  static String pinPath(String channelId, String messageId) =>
+      '/api/v1/channels/$channelId/pin/$messageId';
+
+  static String notificationPreferencePath(String channelId) =>
+      '/api/v1/channels/$channelId/notification-preference';
+
   Future<CreateChannelResponse?> createChannel(CreateChannelRequest request);
   Future<GetChannelsResponse?> getChannels();
   Future<GetChannelsResponse?> getPublicChannels();
@@ -27,6 +39,11 @@ abstract class IChannelService {
   Future<bool> addMember(String channelId, String userId);
   Future<bool> removeMember(String channelId, String userId);
   Future<OrgUsersResponse?> getOrgUsers();
-  Future<GetMessagesResponse?> getMessages(String channelId);
+  Future<GetMessagesResponse?> getMessages(String channelId, {int page = 1});
   Future<SendMessageResponse?> sendMessage(String channelId, String content);
+  Future<bool> editMessage(String messageId, String content);
+  Future<bool> deleteMessage(String messageId);
+  Future<bool> addReaction(String messageId, String emoji, String channelId);
+  Future<bool> pinMessage(String channelId, String messageId);
+  Future<bool> updateNotificationPreference(String channelId, String preference);
 }

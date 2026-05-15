@@ -35,7 +35,9 @@ class ChannelMembersCubit extends Cubit<ChannelMembersState> {
       }
       final userId = data['user_id'] as String? ?? '';
       final member = state.members.where((m) => m.id == userId).firstOrNull;
-      final name = member?.fullName ?? 'Biri';
+      final name = member?.fullName ??
+          data['full_name']?.toString() ??
+          'Biri';
       _typingTimer?.cancel();
       if (!isClosed) emit(state.copyWith(typingUserName: '$name yazıyor...'));
       _typingTimer = Timer(const Duration(seconds: 3), () {

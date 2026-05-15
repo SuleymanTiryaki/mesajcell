@@ -23,29 +23,26 @@ class MessageCubit extends Cubit<MessageState> {
   }
 
   void _subscribeToSocket() {
-    // message:new → bu kanala aitse listeye ekle (dedup)
     _newSub = SocketService.instance.onMessageNew.listen((data) {
       if (data['channel_id'] != channelId) return;
       final msg = MessageModel.fromJson(data);
       if (state.messages.any((m) => m.id == msg.id)) return;
-      if (!isClosed) {
-        emit(state.copyWith(messages: [...state.messages, msg]));
-      }
+      if (!isClosed) emit(state.copyWith(messages: [...state.messages, msg]));
     });
 
-    // message:edit → içeriği güncelle
     _editSub = SocketService.instance.onMessageEdit.listen((data) {
       if (data['channel_id'] != channelId) return;
       final id = data['id'] as String?;
       final content = data['content'] as String?;
       if (id == null || content == null) return;
       final updated = state.messages
-          .map((m) => m.id == id ? m.copyWith(content: content) : m)
+          .map((m) => m.id == id
+              ? m.copyWith(content: content, isEdited: true)
+              : m)
           .toList();
       if (!isClosed) emit(state.copyWith(messages: updated));
     });
 
-    // message:delete → içeriği 'Bu mesaj silindi' yap
     _deleteSub = SocketService.instance.onMessageDelete.listen((data) {
       if (data['channel_id'] != channelId) return;
       final id = data['id'] as String?;
@@ -59,15 +56,19 @@ class MessageCubit extends Cubit<MessageState> {
     });
   }
 
-  // ─── REST ─────────────────────────────────────────────────────────────────
+  // ─── Fetch ────────────────────────────────────────────────────────────────
 
   Future<void> fetchMessages() async {
-    emit(state.copyWith(status: MessageStatus.loading));
+    emit(state.copyWith(status: MessageStatus.loading, currentPage: 1, hasMore: true));
     try {
-      final response = await _service.getMessages(channelId);
+      final response = await _service.getMessages(channelId, page: 1);
       final messages = response?.messages ?? [];
       AppLogger.i('[MessageCubit] ${messages.length} mesaj yüklendi');
-      emit(state.copyWith(status: MessageStatus.success, messages: messages));
+      emit(state.copyWith(
+        status: MessageStatus.success,
+        messages: messages,
+        hasMore: messages.length >= 20,
+      ));
     } catch (e, st) {
       AppLogger.e('[MessageCubit] fetchMessages hata', error: e, stackTrace: st);
       emit(state.copyWith(
@@ -77,29 +78,44 @@ class MessageCubit extends Cubit<MessageState> {
     }
   }
 
-  // ─── Gönder ───────────────────────────────────────────────────────────────
+  Future<void> loadMore() async {
+    if (state.loadingMore || !state.hasMore) return;
+    emit(state.copyWith(loadingMore: true));
+    final nextPage = state.currentPage + 1;
+    try {
+      final response = await _service.getMessages(channelId, page: nextPage);
+      final newMsgs = response?.messages ?? [];
+      if (newMsgs.isEmpty) {
+        emit(state.copyWith(loadingMore: false, hasMore: false));
+      } else {
+        emit(state.copyWith(
+          messages: [...newMsgs, ...state.messages],
+          currentPage: nextPage,
+          loadingMore: false,
+          hasMore: newMsgs.length >= 20,
+        ));
+      }
+    } catch (e, st) {
+      AppLogger.e('[MessageCubit] loadMore hata', error: e, stackTrace: st);
+      emit(state.copyWith(loadingMore: false));
+    }
+  }
 
-  /// Socket bağlıysa WebSocket üzerinden gönderir; değilse REST'e düşer.
-  /// message:new event'i listeye ekler — REST yanıtında da ekler (fallback).
-  Future<void> sendMessage(String content) async {
+  // ─── Send ─────────────────────────────────────────────────────────────────
+
+  Future<void> sendMessage(String content, {String? replyToMessageId}) async {
     if (content.trim().isEmpty) return;
     final trimmed = content.trim();
-
     if (SocketService.instance.isConnected) {
-      SocketService.instance.sendMessage(channelId, trimmed);
-      // message:new event'i _newSub üzerinden listeye ekleyecek
+      SocketService.instance.sendMessage(channelId, trimmed, replyToMessageId: replyToMessageId);
     } else {
-      // Socket bağlı değilse REST fallback
       emit(state.copyWith(sending: true));
       try {
         final response = await _service.sendMessage(channelId, trimmed);
         if (response?.success == true && response?.message != null) {
           final msg = response!.message!;
           if (!state.messages.any((m) => m.id == msg.id)) {
-            emit(state.copyWith(
-              messages: [...state.messages, msg],
-              sending: false,
-            ));
+            emit(state.copyWith(messages: [...state.messages, msg], sending: false));
           } else {
             emit(state.copyWith(sending: false));
           }
@@ -107,11 +123,87 @@ class MessageCubit extends Cubit<MessageState> {
           emit(state.copyWith(sending: false));
         }
       } catch (e, st) {
-        AppLogger.e('[MessageCubit] sendMessage REST hata',
-            error: e, stackTrace: st);
+        AppLogger.e('[MessageCubit] sendMessage REST hata', error: e, stackTrace: st);
         emit(state.copyWith(sending: false));
       }
     }
+  }
+
+  Future<void> sendFileMessage({
+    required String fileName,
+    required int fileSize,
+    required String mimeType,
+    String? fileUrl,
+  }) async {
+    SocketService.instance.sendFileMessage(
+      channelId: channelId,
+      fileName: fileName,
+      fileSize: fileSize,
+      mimeType: mimeType,
+      fileUrl: fileUrl,
+    );
+  }
+
+  // ─── Edit ─────────────────────────────────────────────────────────────────
+
+  Future<void> editMessage(String msgId, String content) async {
+    // Optimistic update
+    final updated = state.messages
+        .map((m) => m.id == msgId
+            ? m.copyWith(content: content, isEdited: true)
+            : m)
+        .toList();
+    if (!isClosed) emit(state.copyWith(messages: updated));
+    if (SocketService.instance.isConnected) {
+      SocketService.instance.editMessage(msgId, channelId, content);
+    } else {
+      await _service.editMessage(msgId, content);
+    }
+  }
+
+  // ─── Delete ───────────────────────────────────────────────────────────────
+
+  Future<void> deleteMessage(String msgId) async {
+    // Optimistic update
+    final updated = state.messages
+        .map((m) => m.id == msgId
+            ? m.copyWith(content: 'Bu mesaj silindi', isDeleted: true)
+            : m)
+        .toList();
+    if (!isClosed) emit(state.copyWith(messages: updated));
+    if (SocketService.instance.isConnected) {
+      SocketService.instance.deleteMessage(msgId, channelId);
+    } else {
+      await _service.deleteMessage(msgId);
+    }
+  }
+
+  // ─── React ────────────────────────────────────────────────────────────────
+
+  Future<void> addReaction(String msgId, String emoji) async {
+    // Optimistic: find or add reaction
+    final updated = state.messages.map((m) {
+      if (m.id != msgId) return m;
+      final existing = m.reactions.where((r) => r.emoji == emoji).firstOrNull;
+      final newReactions = existing != null
+          ? m.reactions
+              .map((r) => r.emoji == emoji ? Reaction(emoji: emoji, count: r.count + 1) : r)
+              .toList()
+          : [...m.reactions, Reaction(emoji: emoji, count: 1)];
+      return m.copyWith(reactions: newReactions);
+    }).toList();
+    if (!isClosed) emit(state.copyWith(messages: updated));
+    await _service.addReaction(msgId, emoji, channelId);
+  }
+
+  // ─── Pin ──────────────────────────────────────────────────────────────────
+
+  Future<void> pinMessage(String msgId) async {
+    final updated = state.messages
+        .map((m) => m.id == msgId ? m.copyWith(isPinned: true) : m)
+        .toList();
+    if (!isClosed) emit(state.copyWith(messages: updated));
+    await _service.pinMessage(channelId, msgId);
   }
 
   @override

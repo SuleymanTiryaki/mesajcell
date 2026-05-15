@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mesajcell/features/core/socket_service.dart';
-import 'package:mesajcell/product/channel/view/public_channels_view.dart';
-import 'package:mesajcell/product/home/view/home_view.dart';
-import 'package:mesajcell/product/settings/view/settings_view.dart';
+import '../../features/core/socket_service.dart';
+import '../channel/view/public_channels_view.dart';
+import '../home/view/home_view.dart';
+import '../settings/view/settings_view.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -26,10 +26,10 @@ class _MainShellState extends State<MainShell> {
     super.dispose();
   }
 
-  static const List<Widget> _pages = [
+  static const _pages = [
     HomeView(),
     PublicChannelsView(),
-    _PlaceholderView(label: 'Güncelleme', icon: Icons.circle_notifications_outlined),
+    _PlaceholderView('Güncellemeler'),
     SettingsView(),
   ];
 
@@ -40,31 +40,29 @@ class _MainShellState extends State<MainShell> {
         index: _currentIndex,
         children: _pages,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
-        },
-        indicatorColor: const Color(0xFF6C3EED).withAlpha(30),
-        destinations: const [
-          NavigationDestination(
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble),
+            activeIcon: Icon(Icons.chat_bubble),
             label: 'Sohbetler',
           ),
-          NavigationDestination(
+          BottomNavigationBarItem(
             icon: Icon(Icons.explore_outlined),
-            selectedIcon: Icon(Icons.explore),
+            activeIcon: Icon(Icons.explore),
             label: 'Açık Kanallar',
           ),
-          NavigationDestination(
+          BottomNavigationBarItem(
             icon: Icon(Icons.circle_notifications_outlined),
-            selectedIcon: Icon(Icons.circle_notifications),
+            activeIcon: Icon(Icons.circle_notifications),
             label: 'Güncellemeler',
           ),
-          NavigationDestination(
+          BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
+            activeIcon: Icon(Icons.person),
             label: 'Siz',
           ),
         ],
@@ -73,29 +71,18 @@ class _MainShellState extends State<MainShell> {
   }
 }
 
-/// Henüz geliştirilmemiş sekmeler için geçici placeholder
 class _PlaceholderView extends StatelessWidget {
   final String label;
-  final IconData icon;
-
-  const _PlaceholderView({required this.label, required this.icon});
+  const _PlaceholderView(this.label);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(label)),
       body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 64,
-                color: Theme.of(context).colorScheme.onSurfaceVariant),
-            const SizedBox(height: 12),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          ],
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
     );

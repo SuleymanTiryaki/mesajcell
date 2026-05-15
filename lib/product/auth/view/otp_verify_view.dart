@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import '../../../features/core/app_dio.dart';
 import '../../../features/core/app_logger.dart';
 import '../../../features/core/app_session.dart';
 import '../../../features/utility/const/constant_color.dart';
 import '../model/otp_model.dart';
 import '../service/auth_service.dart';
-import '../../shell/main_shell.dart';
 
 /// Kayıt sonrası OTP doğrulama ekranı.
 /// Kullanıcı kodu elle girer; yanlışsa hata gösterir.
@@ -45,21 +45,16 @@ class _OtpVerifyViewState extends State<OtpVerifyView> {
         ),
       );
 
-      if (!mounted) return;
-
       if (response?.success == true) {
-        AppLogger.i('[OtpVerifyView] OTP doğrulandı → MainShell');
-        // Token'ları oturuma kaydet
+        AppLogger.i('[OtpVerifyView] OTP doğrulandı → home');
         if (response!.accessToken != null) {
-          AppSession.instance.setTokens(
+          await AppSession.instance.setTokens(
             accessToken: response.accessToken!,
             refreshToken: response.refreshToken,
           );
         }
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainShell()),
-          (_) => false,
-        );
+        if (!mounted) return;
+        context.go('/home');
       } else {
         final msg = response?.message ?? 'Doğrulama kodu hatalı.';
         AppLogger.w('[OtpVerifyView] OTP hata: $msg');
